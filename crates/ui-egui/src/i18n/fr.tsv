@@ -2700,3 +2700,13 @@ template	Letter	Lettre
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Tapez une taille dans n'importe quelle unité, par exemple 5 cm ou 300 px. L'autre côté suit, et l'image garde ses proportions.
 
 	Import…	Importer…
+
+# Explicit desktop French dictionary installation
+	Install French dictionary	Installer le dictionnaire français
+	French dictionary (Dicollecte 7.7, MPL 2.0)	Dictionnaire français (Dicollecte 7.7, MPL 2.0)
+	Downloaded from GitHub only when you click Install.	Téléchargé depuis GitHub uniquement lorsque vous cliquez sur Installer.
+	Installing the French dictionary…	Installation du dictionnaire français…
+	The French dictionary is ready.	Le dictionnaire français est prêt.
+	Dictionary installation failed: {reason}	Échec de l’installation du dictionnaire : {reason}
+	The dictionary download stopped. Please try again.	Le téléchargement du dictionnaire s’est arrêté. Réessayez.
+	The dictionaries folder changed during installation. Please try again.	Le dossier des dictionnaires a changé pendant l’installation. Réessayez.

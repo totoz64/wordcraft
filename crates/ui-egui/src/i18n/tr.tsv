@@ -2696,3 +2696,13 @@ preview	Title	Örnek
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Herhangi bir birimde bir boyut yazın, örneğin 5 cm veya 300 px. Diğer kenar da buna uyar, böylece resim oranlarını korur.
 
 	Import…	İçe aktar…
+
+# Explicit desktop French dictionary installation
+	Install French dictionary	Fransızca sözlüğü yükle
+	French dictionary (Dicollecte 7.7, MPL 2.0)	Fransızca sözlük (Dicollecte 7.7, MPL 2.0)
+	Downloaded from GitHub only when you click Install.	Yalnızca yükleme düğmesine tıkladığınızda GitHub üzerinden indirilir.
+	Installing the French dictionary…	Fransızca sözlük yükleniyor…
+	The French dictionary is ready.	Fransızca sözlük hazır.
+	Dictionary installation failed: {reason}	Sözlük yüklenemedi: {reason}
+	The dictionary download stopped. Please try again.	Sözlük indirme işlemi durdu. Lütfen yeniden deneyin.
+	The dictionaries folder changed during installation. Please try again.	Yükleme sırasında sözlük klasörü değişti. Lütfen yeniden deneyin.

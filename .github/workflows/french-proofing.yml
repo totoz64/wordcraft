@@ -5,6 +5,8 @@ on:
     paths:
       - 'Cargo*'
       - 'crates/proof/**'
+      - 'apps/wordcraft/**'
+      - 'crates/ui-egui/**'
       - 'crates/engine/src/cmd/review.rs'
       - 'crates/engine/src/tests.rs'
       - 'crates/engine/tests/french_grammar.rs'
@@ -16,6 +18,8 @@ on:
     paths:
       - 'Cargo*'
       - 'crates/proof/**'
+      - 'apps/wordcraft/**'
+      - 'crates/ui-egui/**'
       - 'crates/engine/src/cmd/review.rs'
       - 'crates/engine/src/tests.rs'
       - 'crates/engine/tests/french_grammar.rs'
@@ -35,7 +39,7 @@ jobs:
   french:
     name: French (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -45,6 +49,13 @@ jobs:
       CARGO_INCREMENTAL: '0'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Linux desktop build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev \
+            libxi-dev libgtk-3-dev libfontconfig1-dev libfreetype-dev
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
@@ -68,6 +79,7 @@ jobs:
           for name, sha256 in {
               "fr.aff": "c176610cd5dc4846806a65ddd029f422d87978bf58f224aa44222662a16a2de5",
               "fr.dic": "b78a868e31dd6e373b6c3217969afb898a9acde828a5e7ef97308da42218c88c",
+              "README_dict_fr.txt": "4a25abf740ad6ba5e8d0cfc0d2ffadc3c13c303f8fe389f323b061a389350f83",
           }.items():
               with urlopen(f"{base}/{name}", timeout=60) as response:
                   data = response.read(64 * 1024 * 1024 + 1)
@@ -123,3 +135,11 @@ jobs:
 
       - name: Grammar suggestions, disable and undo
         run: cargo test --locked -p wordcraft-engine --test french_grammar
+
+      - name: Desktop installation and activation
+        env:
+          WORDCRAFT_DICTIONARIES: ${{ runner.temp }}/wordcraft-french-dictionary
+        run: cargo test --locked -p wordcraft french_dictionary -- --include-ignored
+
+      - name: Async installation state and preference persistence
+        run: cargo test --locked -p wordcraft-ui-egui --test french_dictionary_setup

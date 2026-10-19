@@ -2287,3 +2287,13 @@
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Geben Sie eine Größe in einer beliebigen Einheit ein, z. B. 5 cm oder 300 px. Die andere Seite passt sich an, sodass das Bild seine Proportionen behält.
 
 	Import…	Importieren…
+
+# Explicit desktop French dictionary installation
+	Install French dictionary	Französisches Wörterbuch installieren
+	French dictionary (Dicollecte 7.7, MPL 2.0)	Französisches Wörterbuch (Dicollecte 7.7, MPL 2.0)
+	Downloaded from GitHub only when you click Install.	Wird erst nach einem Klick auf Installieren von GitHub heruntergeladen.
+	Installing the French dictionary…	Französisches Wörterbuch wird installiert…
+	The French dictionary is ready.	Das französische Wörterbuch ist bereit.
+	Dictionary installation failed: {reason}	Wörterbuchinstallation fehlgeschlagen: {reason}
+	The dictionary download stopped. Please try again.	Der Wörterbuchdownload wurde unterbrochen. Bitte erneut versuchen.
+	The dictionaries folder changed during installation. Please try again.	Der Wörterbuchordner wurde während der Installation geändert. Bitte erneut versuchen.
