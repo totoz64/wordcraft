@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** major (French integration and regression gates, based on #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (first bounded conjugation checks and si elision; baseline based on #1660)
 
 ## Baseline for review
 
@@ -15,8 +15,40 @@ and grammar, and hyphenation. `fr-CA` shares spelling and uses Quebec punctuatio
 New documents under the French interface take the French system region. Missing and unreadable
 dictionaries are reported through the existing status-bar and Options diagnostics.
 
-Subject–verb agreement, gender/number agreement, past participles, conjugation and contextual
-homophones are not checked. No automatic document-wide correction is applied.
+General subject–verb agreement, gender/number agreement and contextual homophones are not
+checked. Conjugation coverage is limited to the first cases below. No automatic document-wide
+correction is applied.
+
+## First grammar and conjugation increment
+
+This follow-up is kept separate from installation and the baseline's integration review.
+It adds two small rules, in both `fr-FR` and `fr-CA`:
+
+- `si il` / `si ils` → `s’il` / `s’ils`. `si elle`, `si elles`, `si on`, names and words separated
+  by punctuation remain unchanged. This follows the [OQLF rule on obligatory elision](https://vitrinelinguistique.oqlf.gouv.qc.ca/21737/lorthographe/elision-et-apostrophe/elision-obligatoire).
+- `J’ai manger` → `J’ai mangé`, and equivalent subject + present `avoir` beginnings such as
+  `Tu as écouter` → `Tu as écouté`. The first rule covers only a paragraph's initial phrase and
+  24 explicitly listed first-group verbs; it does not guess from an arbitrary `-er` ending.
+  `Je vais manger`, `J’ai entendu chanter`, preceding objects, quotations, code, tables and
+  detected metalinguistic examples remain outside this rule. The [OQLF distinction between
+  infinitive and participle](https://vitrinelinguistique.oqlf.gouv.qc.ca/21614/la-grammaire/le-verbe/modes/infinitif/distinction-entre-linfinitif-et-le-participe-passe)
+  explains why replacing every infinitive after a verb would be incorrect. The simple
+  auxiliary forms were checked against the [Académie's avoir conjugation](https://www.dictionnaire-academie.fr/conjuguer/A9A3461).
+
+The finite tables and synthetic sentences are original; no third-party corpus or dictionary
+prose is imported. This is an initial, deliberately narrow check, not general conjugation or
+participle agreement. It can miss mistakes in quotations, later clauses and other verbs.
+
+`crates/proof/tests/french_grammar.rs` separates original errors, correct text and unsupported
+errors. The last category is not counted as correct-text precision data. Every targeted error
+must have the expected byte range and suggestion; each suggested correction must stop triggering
+the new rule. Correct-text examples must produce no new alerts. These are small synthetic
+regressions, not an estimate of a real-world false-positive rate. The table test separately
+checks every supported verb and subject combination and its corrected counterpart.
+
+The engine integration test exercises F7, Change, Undo and **Mark grammar errors as you type**
+off/on using the same commands as the desktop UI. Installation, spelling and typing behaviour
+are unchanged by this increment.
 
 ## Reproduce the checks
 
@@ -24,7 +56,9 @@ The synthetic suite runs without downloads:
 
 ```sh
 cargo test --locked -p wordcraft-proof
+cargo test --locked -p wordcraft-proof --test french_grammar
 cargo test --locked -p wordcraft-engine --lib french_proofing_through_the_review_commands
+cargo test --locked -p wordcraft-engine --test french_grammar
 cargo test --locked -p wordcraft-ui-egui --lib a_french_interface_writes_new_documents_in_french
 cargo xtask ci
 ```
@@ -69,4 +103,5 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-20 | minor | Bounded avoir + first-group participle suggestions, si il/ils elision, original error/quiet/unsupported regressions and command-level apply/undo tests |
 | 2026-10-20 | major | Integration checklist, explicit real-dictionary gate, feedback format and staged French follow-ups |

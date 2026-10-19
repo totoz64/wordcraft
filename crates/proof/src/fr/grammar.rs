@@ -21,8 +21,12 @@
 //!   known to have a mute `h`, so aspirated ones (`le hibou`, `la hache`, `le héros`) stay quiet;
 //!   never before a proper noun, `onze`, `oui`, `y…` words (`le yaourt`) or `la une`.
 //!
-//! No agreement or conjugation rule, and no English rule (such as `a`/`an`), applies to French
-//! text.
+//! - **`si il` / `si ils`** → `s’il` / `s’ils`; never elide `si elle`, `si on` or `si un`.
+//! - **First conjugation cases**: at a paragraph's start, `J’ai manger` → `J’ai mangé` for a
+//!   short explicit list of verbs, after a subject + present `avoir` only. Quotations,
+//!   metalinguistic examples and uncertain constructions stay quiet.
+//!
+//! No general agreement analysis or English rule (such as `a`/`an`) applies to French text.
 
 use crate::{Issue, IssueKind, ProofLang, words};
 
@@ -94,7 +98,7 @@ const SPEECH_VERBS: &[&str] = &[
 
 /// The words that elide before a vowel, and their elided form.
 const ELIDING: &[(&str, &str)] =
-    &[("le", "l"), ("la", "l"), ("de", "d"), ("je", "j"), ("me", "m"), ("te", "t"), ("se", "s"), ("ne", "n"), ("que", "qu")];
+    &[("le", "l"), ("la", "l"), ("de", "d"), ("je", "j"), ("me", "m"), ("te", "t"), ("se", "s"), ("ne", "n"), ("que", "qu"), ("si", "s")];
 
 /// Words starting with a vowel that don't take an elision (`le onze`, `le oui`, `de ouate`).
 const NO_ELISION: &[&str] = &["onze", "onzième", "onzièmes", "oui", "ouistiti", "ouistitis", "ouate", "ouates", "uhlan", "uhlans"];
@@ -201,7 +205,7 @@ const MUTE_H: &[&str] = &[
     "hospitalité",
 ];
 
-fn issue(start: usize, end: usize, message: String, suggestions: Vec<String>) -> Issue {
+pub(super) fn issue(start: usize, end: usize, message: String, suggestions: Vec<String>) -> Issue {
     Issue { start, end, kind: IssueKind::Grammar, message, suggestions, lang: ProofLang::Fr }
 }
 
@@ -438,6 +442,9 @@ fn elisions(text: &str, ws: &[(usize, usize)], v: &mut Vec<Issue>) {
             continue;
         }
         let lower1 = w1.to_lowercase();
+        if lower0 == "si" && !matches!(lower1.as_str(), "il" | "ils") {
+            continue;
+        }
         // `le un`, `la une` (the number, the front page); a single letter only where it is a word
         // the elision is certain for (`n’a`, `qu’a`, `j’y`).
         if matches!(lower0.as_str(), "le" | "la") && matches!(lower1.as_str(), "un" | "une") {
@@ -473,6 +480,7 @@ pub fn check_in(text: &str, lang: ProofLang) -> Vec<Issue> {
     repeated_words(text, &ws, &mut v);
     sentence_capitals(text, &ws, &mut v);
     elisions(text, &ws, &mut v);
+    super::conjugation::check(text, &ws, &mut v);
     for i in &mut v {
         i.lang = lang;
     }
