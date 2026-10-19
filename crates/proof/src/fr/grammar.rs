@@ -193,7 +193,6 @@ const MUTE_H: &[&str] = &[
     "horloge",
     "hôtellerie",
     "hérédité",
-    "hiérarchie",
     "historien",
     "historique",
     "humanitaire",
@@ -639,9 +638,12 @@ mod tests {
         ] {
             quiet(&format!("Voici le {w}."));
         }
-        for w in ["honte", "hache", "harpe", "hausse"] {
+        // hiérarchie has an aspirated h, despite the mute h in hiéroglyphe:
+        // https://www.academie-francaise.fr/le-hieroglyphe-pour-lhieroglyphe
+        for w in ["honte", "hache", "harpe", "hausse", "hiérarchie"] {
             quiet(&format!("Voici la {w}."));
         }
+        quiet("Une question de hiérarchie.");
         quiet("Le onze de France. À la une du journal.");
         quiet("Il vient de Orléans.");
         quiet("De a à z, le a et le b.");

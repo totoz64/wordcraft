@@ -3313,6 +3313,10 @@ mod tests {
         h.run();
         h.get(item("French (France)")).click();
         h.run();
+        let paragraph = h.state().session.doc.para(wordcraft_doc::StoryRef::Body, &wordcraft_doc::Path::top(0)).unwrap();
+        assert_eq!(paragraph.text, "Bonjour", "choosing a language keeps the selected text");
+        let french_bytes: usize = paragraph.runs.iter().filter(|r| r.props.lang.as_deref() == Some("fr-FR")).map(|r| r.len).sum();
+        assert_eq!(french_bytes, paragraph.text.len(), "French applies to every selected character, not only the caret");
         assert_eq!(caret_language(h.state()), "French (France)");
         assert!(h.query(item("French (France)")).is_some(), "the current language is listed and checked");
         assert_eq!(language_name(Some("fr-CA")), "French (Canada)");
