@@ -2691,3 +2691,13 @@ preview	Title	Ukázka
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Zadejte velikost v libovolné jednotce, například 5 cm nebo 300 px. Druhá strana se přizpůsobí, takže obrázek zachová své proporce.
 
 	Import…	Importovat…
+
+# Explicit desktop French dictionary installation
+	Install French dictionary	Nainstalovat francouzský slovník
+	French dictionary (Dicollecte 7.7, MPL 2.0)	Francouzský slovník (Dicollecte 7.7, MPL 2.0)
+	Downloaded from GitHub only when you click Install.	Stahuje se z GitHubu pouze po kliknutí na tlačítko instalace.
+	Installing the French dictionary…	Instalace francouzského slovníku…
+	The French dictionary is ready.	Francouzský slovník je připraven.
+	Dictionary installation failed: {reason}	Instalace slovníku se nezdařila: {reason}
+	The dictionary download stopped. Please try again.	Stahování slovníku bylo přerušeno. Zkuste to znovu.
+	The dictionaries folder changed during installation. Please try again.	Složka slovníků se během instalace změnila. Zkuste to znovu.

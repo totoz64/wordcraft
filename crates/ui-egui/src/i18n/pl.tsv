@@ -2704,3 +2704,13 @@ preview	Title	Tytuł
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Wpisz rozmiar w dowolnej jednostce, np. 5 cm lub 300 px. Druga strona dopasuje się, więc obraz zachowa proporcje.
 
 	Import…	Importuj…
+
+# Explicit desktop French dictionary installation
+	Install French dictionary	Zainstaluj słownik francuski
+	French dictionary (Dicollecte 7.7, MPL 2.0)	Słownik francuski (Dicollecte 7.7, MPL 2.0)
+	Downloaded from GitHub only when you click Install.	Pobierany z GitHub tylko po kliknięciu przycisku instalacji.
+	Installing the French dictionary…	Instalowanie słownika francuskiego…
+	The French dictionary is ready.	Słownik francuski jest gotowy.
+	Dictionary installation failed: {reason}	Instalacja słownika nie powiodła się: {reason}
+	The dictionary download stopped. Please try again.	Pobieranie słownika zostało przerwane. Spróbuj ponownie.
+	The dictionaries folder changed during installation. Please try again.	Folder słowników zmienił się podczas instalacji. Spróbuj ponownie.

@@ -2739,3 +2739,13 @@ template	Letter	Thư
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Nhập kích thước theo đơn vị bất kỳ, ví dụ 5 cm hoặc 300 px. Cạnh còn lại thay đổi theo, nên ảnh giữ nguyên tỷ lệ.
 
 	Import…	Nhập…
+
+# Explicit desktop French dictionary installation
+	Install French dictionary	Cài đặt từ điển tiếng Pháp
+	French dictionary (Dicollecte 7.7, MPL 2.0)	Từ điển tiếng Pháp (Dicollecte 7.7, MPL 2.0)
+	Downloaded from GitHub only when you click Install.	Chỉ tải xuống từ GitHub khi bạn nhấp vào Cài đặt.
+	Installing the French dictionary…	Đang cài đặt từ điển tiếng Pháp…
+	The French dictionary is ready.	Từ điển tiếng Pháp đã sẵn sàng.
+	Dictionary installation failed: {reason}	Không thể cài đặt từ điển: {reason}
+	The dictionary download stopped. Please try again.	Quá trình tải từ điển đã dừng. Vui lòng thử lại.
+	The dictionaries folder changed during installation. Please try again.	Thư mục từ điển đã thay đổi trong khi cài đặt. Vui lòng thử lại.

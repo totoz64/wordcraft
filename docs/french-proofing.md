@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** major (French integration and regression gates, based on #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (desktop dictionary installation and activation; baseline based on #1660)
 
 ## Baseline for review
 
@@ -9,6 +9,12 @@ onto current main, retaining the original author's commits. It preserves Indones
 and the newer dictionary error diagnostics. French works with the installed Dicollecte Hunspell
 dictionary; the dictionary is an external runtime input and is never bundled in this repository.
 Install it using [spelling-dictionaries.md](spelling-dictionaries.md).
+
+Desktop builds offer **File › Options › Proofing › Install French dictionary**. An explicit
+click downloads pinned, hash-verified files in the background, publishes a complete versioned
+directory, then persists and reloads the dictionaries folder without restarting. Existing manual
+dictionaries take precedence. Errors permit retry and a folder changed during installation is
+never replaced by a stale result. There is no startup download or browser installer.
 
 The baseline includes spelling, accent and apostrophe suggestions, conservative French typography
 and grammar, and hyphenation. `fr-CA` shares spelling and uses Quebec punctuation conventions.
@@ -33,6 +39,8 @@ For the real dictionary, set `WORDCRAFT_DICTIONARIES` to its folder, then run:
 
 ```sh
 cargo test --locked -p wordcraft-proof --test french_dictionary -- --ignored
+cargo test --locked -p wordcraft french_dictionary -- --include-ignored
+cargo test --locked -p wordcraft-ui-egui --test french_dictionary_setup
 ```
 
 This explicit gate fails if the dictionary is absent, unreadable, unexpectedly small, or found
@@ -41,8 +49,10 @@ fr-FR/fr-CA dispatch. A separate process tests unreadable-dictionary diagnostics
 so synthetic unit tests cannot replace the dictionary being checked.
 
 The **French proofing** workflow runs these dictionary and review-command checks on Windows,
-macOS and Linux. It downloads a pinned LibreOffice revision of Dicollecte 7.7 and verifies both
-SHA-256 hashes. The existing UI workflow and `cargo xtask ci` remain required validation;
+macOS and Linux. It downloads a pinned LibreOffice revision of Dicollecte 7.7 and verifies all three
+SHA-256 hashes (including the dictionary readme). It also checks atomic installation, interrupted
+downloads, existing dictionaries, retry, immediate activation and preference persistence. The
+existing UI workflow and `cargo xtask ci` remain required validation;
 declaring a workflow here does not mean its remote runs have passed.
 
 ## Small follow-ups
@@ -69,4 +79,5 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-20 | minor | Explicit desktop download button, verified atomic installation, live activation and saved folder; existing dictionaries retained |
 | 2026-10-20 | major | Integration checklist, explicit real-dictionary gate, feedback format and staged French follow-ups |

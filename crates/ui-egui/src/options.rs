@@ -288,7 +288,12 @@ fn proofing(app: &mut WordApp, ui: &mut Ui) {
 fn dictionaries(app: &mut WordApp, ui: &mut Ui) {
     let saved = app.session.prefs.dictionaries_folder.clone().unwrap_or_default();
     let id = egui::Id::new("options_dictionaries_folder");
-    let mut folder = ui.data(|d| d.get_temp::<String>(id)).unwrap_or_else(|| saved.clone());
+    // Keep an unfinished edit, but refresh when the installer or a control command changes prefs.
+    let mut folder = ui
+        .data(|d| d.get_temp::<(String, String)>(id))
+        .filter(|(previous, _)| previous == &saved)
+        .map(|(_, edit)| edit)
+        .unwrap_or_else(|| saved.clone());
     ui.label(tl!("Dictionaries folder:"));
     ui.horizontal(|ui| {
         let r = ui.add(egui::TextEdit::singleline(&mut folder).desired_width(320.0).hint_text(tl!("Not set: the system's usual places")));
@@ -308,8 +313,9 @@ fn dictionaries(app: &mut WordApp, ui: &mut Ui) {
             folder.clear();
         }
     });
-    ui.data_mut(|d| d.insert_temp(id, folder));
+    ui.data_mut(|d| d.insert_temp(id, (saved, folder)));
     note(ui, "Hunspell .aff and .dic files here (pl_PL, pt_BR, it_IT, hr_HR, tr_TR) are used before the system's.");
+    crate::dictionary_setup::show(app, ui);
     // The dictionary each language found, looked up again after the folder changes.
     let found_id = egui::Id::new("options_dictionaries_found");
     let generation = wordcraft_engine::proof::dictionary_generation();

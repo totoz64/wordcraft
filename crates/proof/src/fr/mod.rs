@@ -29,6 +29,21 @@ static DICT: RwLock<Option<Arc<AffixDict>>> = RwLock::new(None);
 /// File names of a French Hunspell dictionary: France first, then the generic and regional ones.
 const NAMES: &[&str] = &["fr_FR", "fr", "fr-FR", "fr_BE", "fr_CA", "fr_CH", "fr_LU", "fr_MC"];
 
+/// App-managed installation, published as a complete directory so readers never see half a pair.
+/// Existing dictionary files in the chosen folder keep precedence.
+pub const MANAGED_DIRECTORY: &str = "wordcraft-french-7.7-c176610c-b78a868e";
+
+/// Find a French pair in one folder, including an app-managed installation.
+pub fn find_in(folder: &std::path::Path) -> Option<(std::path::PathBuf, std::path::PathBuf)> {
+    crate::hunspell::find_in(folder, NAMES).or_else(|| crate::hunspell::find_in(&folder.join(MANAGED_DIRECTORY), &["fr"]))
+}
+
+fn installed_files() -> Option<(std::path::PathBuf, std::path::PathBuf)> {
+    let managed = format!("{MANAGED_DIRECTORY}/fr");
+    let names: Vec<&str> = NAMES.iter().copied().chain(std::iter::once(managed.as_str())).collect();
+    crate::hunspell::find(&names)
+}
+
 /// The French dictionary: the installed Hunspell `fr_FR` (read on first use), one given with
 /// [`install_dictionary`], or an empty one when none is available (French spelling is off
 /// then; see [`has_dictionary`]).
@@ -43,7 +58,7 @@ pub fn dictionary() -> Arc<AffixDict> {
 }
 
 fn load_installed() -> AffixDict {
-    let Some((aff, dic)) = crate::hunspell::find(NAMES) else {
+    let Some((aff, dic)) = installed_files() else {
         crate::hunspell::clear_load_error(NAMES[0]);
         log::info!("French spelling: no Hunspell fr_FR dictionary installed");
         return AffixDict::default();
@@ -71,7 +86,7 @@ pub fn reload_dictionary() {
 /// The `.dic` file of the Hunspell French dictionary found in the dictionaries folder or the
 /// system locations now (File › Options › Proofing shows it, #1063); `None` when there is none.
 pub fn installed_path() -> Option<std::path::PathBuf> {
-    crate::hunspell::find(NAMES).map(|(_, dic)| dic)
+    installed_files().map(|(_, dic)| dic)
 }
 
 /// Is a French dictionary available (spelling is checked)?

@@ -2322,3 +2322,13 @@
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Sisesta suurus mis tahes ühikus, näiteks 5 cm või 300 px. Teine külg muutub kaasa, nii et pilt säilitab oma proportsioonid.
 
 	Import…	Impordi…
+
+# Explicit desktop French dictionary installation
+	Install French dictionary	Paigalda prantsuse sõnastik
+	French dictionary (Dicollecte 7.7, MPL 2.0)	Prantsuse sõnastik (Dicollecte 7.7, MPL 2.0)
+	Downloaded from GitHub only when you click Install.	Laaditakse GitHubist alla ainult paigaldusnupul klõpsamisel.
+	Installing the French dictionary…	Prantsuse sõnastiku paigaldamine…
+	The French dictionary is ready.	Prantsuse sõnastik on valmis.
+	Dictionary installation failed: {reason}	Sõnastiku paigaldamine ebaõnnestus: {reason}
+	The dictionary download stopped. Please try again.	Sõnastiku allalaadimine katkes. Proovi uuesti.
+	The dictionaries folder changed during installation. Please try again.	Sõnastike kaust muutus paigaldamise ajal. Proovi uuesti.

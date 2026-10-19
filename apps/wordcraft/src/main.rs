@@ -16,6 +16,7 @@ mod clipboard;
 mod control_server;
 mod default_apps;
 mod file_dialogs;
+mod french_dictionary;
 #[cfg(any(target_os = "windows", target_os = "macos", test))]
 mod graphics;
 mod logging;
@@ -239,6 +240,7 @@ fn write_prefs(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
 /// (`animations`), and making WordCraft the default app for Word documents (`default_apps`, #295).
 fn services(file_dialog: file_dialogs::Hook, ctx: &egui::Context) -> Services {
     Services {
+        install_french_dictionary: Some(french_dictionary::hook(ctx)),
         file_dialog: Some(file_dialog),
         printers: Some(print::discover()),
         print_native: Some(print::submit()),

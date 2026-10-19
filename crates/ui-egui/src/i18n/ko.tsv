@@ -2542,3 +2542,13 @@ preview	Title	제목
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	5 cm 또는 300 px처럼 원하는 단위로 크기를 입력하세요. 다른 쪽도 함께 바뀌어 그림의 비율이 유지됩니다.
 
 	Import…	가져오기…
+
+# Explicit desktop French dictionary installation
+	Install French dictionary	프랑스어 사전 설치
+	French dictionary (Dicollecte 7.7, MPL 2.0)	프랑스어 사전(Dicollecte 7.7, MPL 2.0)
+	Downloaded from GitHub only when you click Install.	설치를 클릭할 때만 GitHub에서 다운로드합니다.
+	Installing the French dictionary…	프랑스어 사전 설치 중…
+	The French dictionary is ready.	프랑스어 사전이 준비되었습니다.
+	Dictionary installation failed: {reason}	사전 설치 실패: {reason}
+	The dictionary download stopped. Please try again.	사전 다운로드가 중단되었습니다. 다시 시도하세요.
+	The dictionaries folder changed during installation. Please try again.	설치 중 사전 폴더가 변경되었습니다. 다시 시도하세요.

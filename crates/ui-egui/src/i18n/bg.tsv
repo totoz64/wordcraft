@@ -2688,3 +2688,13 @@
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Въведете размер в произволна единица, например 5 cm или 300 px. Другата страна се променя съответно, така че картината запазва пропорциите си.
 
 	Import…	Импортиране…
+
+# Explicit desktop French dictionary installation
+	Install French dictionary	Инсталиране на френски речник
+	French dictionary (Dicollecte 7.7, MPL 2.0)	Френски речник (Dicollecte 7.7, MPL 2.0)
+	Downloaded from GitHub only when you click Install.	Изтегля се от GitHub само при натискане на бутона за инсталиране.
+	Installing the French dictionary…	Инсталиране на френския речник…
+	The French dictionary is ready.	Френският речник е готов.
+	Dictionary installation failed: {reason}	Инсталирането на речника е неуспешно: {reason}
+	The dictionary download stopped. Please try again.	Изтеглянето на речника спря. Опитайте отново.
+	The dictionaries folder changed during installation. Please try again.	Папката с речниците е променена по време на инсталирането. Опитайте отново.

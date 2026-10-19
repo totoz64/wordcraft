@@ -2300,3 +2300,13 @@
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Digite um tamanho em qualquer unidade, como 5 cm ou 300 px. O outro lado acompanha, e a imagem mantém as proporções.
 
 	Import…	Importar…
+
+# Explicit desktop French dictionary installation
+	Install French dictionary	Instalar dicionário de francês
+	French dictionary (Dicollecte 7.7, MPL 2.0)	Dicionário de francês (Dicollecte 7.7, MPL 2.0)
+	Downloaded from GitHub only when you click Install.	Baixado do GitHub apenas ao clicar em Instalar.
+	Installing the French dictionary…	Instalando o dicionário de francês…
+	The French dictionary is ready.	O dicionário de francês está pronto.
+	Dictionary installation failed: {reason}	Falha na instalação do dicionário: {reason}
+	The dictionary download stopped. Please try again.	O download do dicionário foi interrompido. Tente novamente.
+	The dictionaries folder changed during installation. Please try again.	A pasta de dicionários mudou durante a instalação. Tente novamente.
