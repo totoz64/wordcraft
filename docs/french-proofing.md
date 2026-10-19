@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (first bounded conjugation checks and si elision; baseline based on #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (personal-cleft agreement and optional finite morphology; baseline based on #1660)
 
 ## Baseline for review
 
@@ -49,6 +49,56 @@ checks every supported verb and subject combination and its corrected counterpar
 The engine integration test exercises F7, Change, Undo and **Mark grammar errors as you type**
 off/on using the same commands as the desktop UI. Installation, spelling and typing behaviour
 are unchanged by this increment.
+
+## Personal-cleft agreement and optional morphology
+
+`C’est moi qui est` suggests `suis`; `C’est nous qui ont` suggests `avons`.
+The check covers only a paragraph-initial `C’est` + personal antecedent + `qui` +
+adjacent finite verb, or `Ce sont eux/elles qui`. It excludes quotations, code,
+tables, intervening clitics/negation and detected metalinguistic examples.
+The [OQLF agreement rule](https://vitrinelinguistique.oqlf.gouv.qc.ca/23397/la-grammaire/le-verbe/accord-du-verbe-avec-le-sujet/sujet-qui-est-un-pronom-relatif/accord-du-verbe-avec-le-pronom-relatif-qui-precede-dun-attribut)
+also describes variable agreement with noun/demonstrative attributes. Accordingly,
+`Je suis celle qui est` and `Nous sommes ceux qui ont` are outside this rule.
+
+Four original present-tense paradigms (être, avoir, suivre, sommer) work without
+downloads. All finite readings are retained: `C’est toi qui suis cette piste`
+and `C’est toi qui sommes le débiteur de payer` must not be flagged merely because
+`suis` and `sommes` also have être readings.
+
+For additional verbs and seven finite tenses/moods, place the unchanged
+`lexique-grammalecte-fr-v7.7.txt` beside the spelling dictionaries in the configured
+**Dictionaries folder**, or in its `wordcraft-french-grammar-7.7-bdccf206` subdirectory.
+The direct file takes precedence. Reload the folder setting or restart after changing it.
+This optional data is **not installed by the spelling-dictionary button**, and is never
+bundled in the repository or application.
+
+The [published 7.7 lexicon](https://www.grammalecte.net/dic/lexique-grammalecte-fr-v7.7.zip)
+contains linguistic TSV data under **MPL 2.0**, confirmed in its own README and header.
+Archive SHA-256: `bdccf2065e252010253171000a38de84581407896b6bc60aca7d4d69dab7e4d2`.
+Retain `README_lexique.txt` and its licence notice with the data. The original Rust
+reader does not use Grammalecte grammar code. The real-data gate currently reads
+274,427 finite analyses; nouns, infinitives, imperatives and participles are not
+treated as finite readings. File size, line length, row count and index fan-out are bounded.
+An unreadable optional file records a diagnostic through `fr::morphology::load_error()`
+and leaves the builtin rules available. A successful reload clears the diagnostic.
+
+A form can have several lemmas or moods. If **any** finite reading agrees with the
+antecedent, no alert is produced. Otherwise suggestions retain a possible lemma and
+tense/mood; the reader does not infer the intended mood from the sentence. For example,
+`manges` has indicative and subjunctive readings, so `nous` can yield `mangeons` and
+`mangions`. This conservative scope can miss errors; it is not general subject agreement,
+participle agreement or a real-world precision claim.
+
+The independent runtime test covers corrupt data, manual-file precedence, fallback,
+reload and cleared errors. The pinned real-data test covers seven finite tenses/moods,
+homographs and both French regions. F7, Change and Undo also cover the builtin cleft rule.
+
+```sh
+# Synthetic tests need no network/data download.
+cargo test --locked -p wordcraft-proof --test french_morphology
+# Explicit data gate: absence is a failure, never a silent skip.
+WORDCRAFT_FRENCH_LEXICON=/path/to/lexique-grammalecte-fr-v7.7.txt cargo test --locked -p wordcraft-proof --test french_morphology -- --ignored
+```
 
 ## Reproduce the checks
 
@@ -103,5 +153,6 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-20 | minor | Personal-cleft agreement, ambiguity-aware optional MPL-2.0 finite morphology, bounded reader, fallback/reload diagnostics and explicit pinned real-data coverage |
 | 2026-10-20 | minor | Bounded avoir + first-group participle suggestions, si il/ils elision, original error/quiet/unsupported regressions and command-level apply/undo tests |
 | 2026-10-20 | major | Integration checklist, explicit real-dictionary gate, feedback format and staged French follow-ups |
