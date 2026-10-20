@@ -26,7 +26,8 @@ fn drawn_grammar_marks(session: &mut Session) -> usize {
 fn french_grammar_suggestions_apply_and_undo_in_both_regions() {
     let words = [
         "j'ai", "manger", "mangé", "si", "il", "s'il", "vient", "tu", "as", "c'est", "moi", "qui", "est", "suis", "j'avais", "écrire", "écrit", "je",
-        "avais", "n'ai", "n'avais", "pas", "déjà", "encore", "bien", "a", "avons", "avez", "vous", "nous", "n'est", "ne",
+        "avais", "n'ai", "n'avais", "pas", "déjà", "encore", "bien", "a", "avons", "avez", "vous", "nous", "n'est", "ne", "me", "se", "le", "y",
+        "en", "ai", "j'y", "l'ai", "s'est", "n'en", "ont", "trompé",
     ];
     wordcraft_proof::fr::install_dictionary("SET UTF-8\nICONV 1\nICONV ’ '\n", &format!("{}\n{}\n", words.len(), words.join("\n"))).unwrap();
     for language in ["fr-FR", "fr-CA"] {
@@ -43,6 +44,11 @@ fn french_grammar_suggestions_apply_and_undo_in_both_regions() {
             ("Vous a.", "a", "avez"),
             ("Je n’est pas.", "n’est", "ne suis"),
             ("J’est.", "J’est", "Je suis"),
+            ("Je m’est.", "m’est", "me suis"),
+            ("Il s’es.", "s’es", "s’est"),
+            ("Je le avons.", "le avons", "l’ai"),
+            ("J’y est.", "J’y est", "J’y suis"),
+            ("Je n’en ont.", "n’en ont", "n’en ai"),
         ] {
             let mut session = Session::new(Document::from_text(original));
             run(&mut session, "select.all", json!({}));
@@ -106,5 +112,22 @@ fn french_grammar_suggestions_apply_and_undo_in_both_regions() {
         let restored = run(&mut session, "review.issues", json!({}));
         assert_eq!(restored.as_array().unwrap().len(), 1);
         assert_eq!(restored[0]["text"], "a");
+        // ASCII s'es -> curly s’est gains three bytes; the later colon must be reselected
+        // at its new offset. Colon spacing applies to both French regions.
+        let mut session = Session::new(Document::from_text("Il s'es trompé:"));
+        run(&mut session, "select.all", json!({}));
+        run(&mut session, "review.language", json!({"lang":language,"default":true}));
+        assert_eq!(run(&mut session, "review.issues", json!({})).as_array().unwrap().len(), 2);
+        for (wrong, right) in [("s'es", "s’est"), (":", "\u{a0}:")] {
+            run(&mut session, "caret.docStart", json!({}));
+            let selected = run(&mut session, "review.spelling", json!({}));
+            assert_eq!(selected["text"], wrong);
+            assert!(selected["suggestions"].as_array().unwrap().iter().any(|s| s == right), "{selected}");
+            run(&mut session, "review.applySuggestion", json!({"text":right}));
+        }
+        assert!(run(&mut session, "review.issues", json!({})).as_array().unwrap().is_empty());
+        run(&mut session, "edit.undo", json!({}));
+        run(&mut session, "edit.undo", json!({}));
+        assert_eq!(run(&mut session, "review.issues", json!({})).as_array().unwrap().len(), 2);
     }
 }

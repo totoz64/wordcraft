@@ -62,9 +62,16 @@ fn real_french_dictionary_spelling_suggestions_and_dispatch() {
     // Grammar must coexist with real spelling, not only with a synthetic fixture: both the
     // infinitive and the participle are valid dictionary words, but only one fits this phrase.
     for lang in [ProofLang::Fr, ProofLang::FrCa] {
-        for (text, flagged, replacement) in
-            [("J’ai manger.", "manger", "mangé"), ("Si il vient.", "Si il", "S’il"), ("J’est responsable.", "J’est", "Je suis")]
-        {
+        for (text, flagged, replacement) in [
+            ("J’ai manger.", "manger", "mangé"),
+            ("Si il vient.", "Si il", "S’il"),
+            ("J’est responsable.", "J’est", "Je suis"),
+            ("Je m’est préparé.", "m’est", "me suis"),
+            ("Il s'es trompé.", "s'es", "s’est"),
+            ("Je le avons lu.", "le avons", "l’ai"),
+            ("J’y est bien.", "J’y est", "J’y suis"),
+            ("Je n’en ont pas besoin.", "n’en ont", "n’en ai"),
+        ] {
             let issues = wordcraft_proof::check_text(text, &[(0..text.len(), lang)]);
             assert_eq!(issues.len(), 1, "{lang:?}: {text}: {issues:?}");
             let issue = &issues[0];
