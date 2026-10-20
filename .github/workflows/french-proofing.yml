@@ -12,6 +12,7 @@ on:
       - 'crates/engine/src/tests.rs'
       - 'crates/engine/tests/french_grammar.rs'
       - 'crates/engine/tests/french_reflexive_auxiliary.rs'
+      - 'crates/engine/tests/fr_mixed_context.rs'
       - 'docs/french-proofing.md'
       - 'docs/spelling-dictionaries.md'
       - '.github/workflows/french-proofing.yml'
@@ -27,6 +28,7 @@ on:
       - 'crates/engine/src/tests.rs'
       - 'crates/engine/tests/french_grammar.rs'
       - 'crates/engine/tests/french_reflexive_auxiliary.rs'
+      - 'crates/engine/tests/fr_mixed_context.rs'
       - 'docs/french-proofing.md'
       - 'docs/spelling-dictionaries.md'
       - '.github/workflows/french-proofing.yml'
@@ -187,3 +189,50 @@ jobs:
 
       - name: Grammar data activation and installation interlock
         run: cargo test --locked -p wordcraft-ui-egui --test french_grammar_setup
+
+      - name: Prepare pinned mixed-context data
+        shell: python
+        run: |
+          import hashlib
+          import os
+          from pathlib import Path
+          temporary = Path(os.environ["RUNNER_TEMP"])
+          source = temporary / "wordcraft-french-morphology"
+          directory = temporary / "wordcraft-french-dictionary"
+          if not source.is_dir() or source.is_symlink() or not directory.is_dir() or directory.is_symlink():
+              raise RuntimeError("Pinned French input directories are absent or linked")
+          files = {
+              "lexique-grammalecte-fr-v7.7.txt": (64 * 1024 * 1024, "dc1fa3740e6353bccdcb435ea8f1c8a65287726026abd53dd232d5d494548eff"),
+              "README_lexique.txt": (64 * 1024, "2f12da0c8bd1c7899f75dc5437164f61e234b55133ccdfbac06dafbe7f531e8e"),
+          }
+          verified = {}
+          for name, (limit, expected) in files.items():
+              path = source / name
+              if not path.is_file() or path.is_symlink() or path.stat().st_size > limit:
+                  raise RuntimeError("Invalid bounded French input: " + name)
+              with path.open("rb") as stream:
+                  contents = stream.read(limit + 1)
+              if len(contents) > limit or hashlib.sha256(contents).hexdigest() != expected:
+                  raise RuntimeError("Pinned French input size/checksum mismatch: " + name)
+              destination = directory / name
+              if destination.exists():
+                  if not destination.is_file() or destination.is_symlink() or destination.stat().st_size != len(contents):
+                      raise RuntimeError("Unexpected existing French input: " + name)
+                  with destination.open("rb") as stream:
+                      existing = stream.read(limit + 1)
+                  if hashlib.sha256(existing).hexdigest() != expected:
+                      raise RuntimeError("Refusing to replace different French input: " + name)
+              verified[name] = contents
+          for name, contents in verified.items():
+              destination = directory / name
+              if not destination.exists():
+                  with destination.open("xb") as stream:
+                      stream.write(contents)
+
+      - name: Required mixed French grammar context gate
+        env:
+          WORDCRAFT_DICTIONARIES: ${{ runner.temp }}/wordcraft-french-dictionary
+        run: cargo test --locked -p wordcraft-proof --test french_mixed_context_real -- --ignored
+
+      - name: Mixed French grammar review context
+        run: cargo test --locked -p wordcraft-engine --test fr_mixed_context

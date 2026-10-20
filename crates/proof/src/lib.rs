@@ -806,16 +806,17 @@ pub fn check_text_with(text: &str, spans: &[(Range<usize>, ProofLang)], opts: &O
             grammar_in(text, lang, !list_item)
         };
         for issue in found.into_iter().filter(|i| lang_at(i.start) == lang) {
-            if matches!(lang, ProofLang::Fr | ProofLang::FrCa) && fr::grammar::is_personal_subject_issue(&issue) {
-                // The full grammatical context must belong to one French region.
-                // An auxiliary suggestion depends on a later participle as well as
-                // the smaller prefix that its replacement changes.
-                // Show its grammatical suggestion once, rather than an unrelated spelling
-                // guess for the same invalid contraction. Spelling-only mode stays intact.
+            if matches!(lang, ProofLang::Fr | ProofLang::FrCa) && fr::grammar::requires_syntactic_context(&issue) {
+                // The deciding subject, auxiliary and bridge must belong to one
+                // French region, even when only the finite verb or participle changes.
                 let Some(context) = fr::grammar::required_context_range(text, &issue) else { continue };
                 if !merged.iter().any(|(range, language)| *language == lang && range.start <= context.start && context.end <= range.end) {
                     continue;
                 }
+            }
+            if matches!(lang, ProofLang::Fr | ProofLang::FrCa) && fr::grammar::is_personal_subject_issue(&issue) {
+                // Spelling priority still applies only to the replaced personal
+                // prefix, after its full grammatical context has been accepted.
                 accepted_french_subject_ranges.push((lang, issue.start..issue.end));
                 v.retain(|old| old.kind != IssueKind::Spelling || old.lang != lang || old.start < issue.start || old.end > issue.end);
             }

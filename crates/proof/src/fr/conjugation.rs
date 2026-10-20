@@ -154,13 +154,52 @@ pub(super) fn is_prose(text: &str) -> bool {
     !text.chars().any(|c| matches!(c, '"' | '«' | '»' | '“' | '”' | '`' | '<' | '>' | '=' | '@' | '\\' | '\t' | '\n' | '\r'))
 }
 
-pub(super) fn check(text: &str, ws: &[(usize, usize)], issues: &mut Vec<Issue>) {
-    let Some(&(a, b)) = ws.first() else { return };
-    let (Some(before), Some(first)) = (text.get(..a), text.get(a..b)) else { return };
+fn object_cue_end(text: &str, ws: &[(usize, usize)], verb_index: usize) -> Option<usize> {
+    let &(_, end) = ws.get(verb_index)?;
+    let &(a, b) = ws.get(verb_index.checked_add(1)?)?;
+    (text.get(end..a).is_some_and(horizontal)
+        && matches!(
+            text.get(a..b),
+            Some(
+                "le" | "la"
+                    | "les"
+                    | "un"
+                    | "une"
+                    | "ce"
+                    | "cet"
+                    | "cette"
+                    | "ces"
+                    | "mon"
+                    | "ma"
+                    | "mes"
+                    | "ton"
+                    | "ta"
+                    | "tes"
+                    | "son"
+                    | "sa"
+                    | "ses"
+                    | "notre"
+                    | "nos"
+                    | "votre"
+                    | "vos"
+                    | "leur"
+                    | "leurs"
+            )
+        ))
+    .then_some(b)
+}
+
+fn ambiguous_modal(word: &str) -> bool {
+    matches!(word, "pouvoir" | "devoir")
+}
+
+fn auxiliary_prefix(text: &str, ws: &[(usize, usize)]) -> Option<(usize, Person, bool, bool)> {
+    let &(a, b) = ws.first()?;
+    let (Some(before), Some(first)) = (text.get(..a), text.get(a..b)) else { return None };
     let leading = before.trim();
     let dialogue = matches!(leading, "—" | "–" | "-") && before.chars().last().is_some_and(char::is_whitespace);
     if (!leading.is_empty() && !dialogue) || first.len() > 16 || first.chars().skip(1).any(char::is_uppercase) {
-        return;
+        return None;
     }
     let lower = first.to_lowercase().replace('’', "'");
     let (verb_index, subject, impersonal_il, negated) = if matches!(lower.as_str(), "j'ai" | "j'avais" | "j'aurai" | "j'aurais" | "j'eus") {
@@ -173,18 +212,51 @@ pub(super) fn check(text: &str, ws: &[(usize, usize)], issues: &mut Vec<Issue>) 
             "nous" => (Person::FirstPlural, ["avons", "avions", "aurons", "aurions", "eûmes"]),
             "vous" => (Person::SecondPlural, ["avez", "aviez", "aurez", "auriez", "eûtes"]),
             "ils" | "elles" => (Person::ThirdPlural, ["ont", "avaient", "auront", "auraient", "eurent"]),
-            _ => return,
+            _ => return None,
         };
-        let Some(&(c, d)) = ws.get(1) else { return };
-        let Some(auxiliary) = text.get(c..d).filter(|aux| aux.len() <= 16) else { return };
+        let &(c, d) = ws.get(1)?;
+        let auxiliary = text.get(c..d).filter(|aux| aux.len() <= 16)?;
         let auxiliary = auxiliary.replace('’', "'");
         let negated = auxiliary.starts_with("n'");
         let auxiliary = auxiliary.strip_prefix("n'").unwrap_or(&auxiliary);
         if !auxiliaries.contains(&auxiliary) || !text.get(b..c).is_some_and(horizontal) {
-            return;
+            return None;
         }
         (2, person, lower == "il", negated)
     };
+    Some((verb_index, subject, impersonal_il, negated))
+}
+
+/// Reparse the already accepted initial-avoir rule without widening its grammar.
+/// Only a modal complement, or an object cue actually needed by the lexical
+/// auxiliary policy, extends the deciding range beyond the replaced infinitive.
+pub(super) fn required_context_range(text: &str, issue: &Issue) -> Option<std::ops::Range<usize>> {
+    let ws = crate::words(text);
+    let &(subject_start, _) = ws.first()?;
+    let (index, subject, impersonal_il, negated) = auxiliary_prefix(text, &ws)?;
+    let index = participle_index(text, &ws, index, negated)?;
+    let &(start, end) = ws.get(index)?;
+    if issue.start != start || issue.end != end {
+        return None;
+    }
+    let word = text.get(start..end)?;
+    let object_end = object_cue_end(text, &ws, index);
+    let object_decides = object_end.is_some()
+        && !PARTICIPLES.iter().any(|(infinitive, _)| *infinitive == word)
+        && super::morphology::lexicon().participle_forms(word, subject, impersonal_il, false).is_none();
+    let required_end = if ambiguous_modal(word) {
+        ws.get(index.checked_add(1)?)?.1
+    } else if object_decides {
+        object_end?
+    } else {
+        end
+    };
+    text.get(subject_start..required_end)?;
+    Some(subject_start..required_end)
+}
+
+pub(super) fn check(text: &str, ws: &[(usize, usize)], issues: &mut Vec<Issue>) {
+    let Some((verb_index, subject, impersonal_il, negated)) = auxiliary_prefix(text, ws) else { return };
     // Only a short explicit list can intervene. Never skip a participle, object clitic,
     // `beau` (avoir beau + infinitive), `à` or restrictive `que`. A negative auxiliary
     // additionally needs one explicit negative adverb, not an arbitrary `ne` reading.
@@ -231,7 +303,7 @@ pub(super) fn check(text: &str, ws: &[(usize, usize)], issues: &mut Vec<Issue>) 
     }
     // `avoir pouvoir (sur...)`, `avoir devoir de...` can use bare nouns. Require an
     // overt known infinitive complement before treating these two forms as modal verbs.
-    if matches!(word, "pouvoir" | "devoir")
+    if ambiguous_modal(word)
         && !following.first().is_some_and(|&(a, b)| {
             text.get(end..a).is_some_and(horizontal)
                 && text.get(a..b).is_some_and(|next| {
@@ -246,37 +318,7 @@ pub(super) fn check(text: &str, ws: &[(usize, usize)], issues: &mut Vec<Issue>) 
     {
         return;
     }
-    let direct_object = following.first().is_some_and(|&(a, b)| {
-        text.get(end..a).is_some_and(horizontal)
-            && matches!(
-                text.get(a..b),
-                Some(
-                    "le" | "la"
-                        | "les"
-                        | "un"
-                        | "une"
-                        | "ce"
-                        | "cet"
-                        | "cette"
-                        | "ces"
-                        | "mon"
-                        | "ma"
-                        | "mes"
-                        | "ton"
-                        | "ta"
-                        | "tes"
-                        | "son"
-                        | "sa"
-                        | "ses"
-                        | "notre"
-                        | "nos"
-                        | "votre"
-                        | "vos"
-                        | "leur"
-                        | "leurs"
-                )
-            )
-    });
+    let direct_object = object_cue_end(text, ws, verb_index).is_some();
     let suggestions = PARTICIPLES
         .iter()
         .find(|(infinitive, _)| *infinitive == word)
