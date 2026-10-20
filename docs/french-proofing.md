@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (reviewed French baseline: historical compatibility and pinned CI); previously minor (desktop dictionary installation and activation; baseline based on #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (reviewed French baseline: historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660)
 
 ## Shared-engine compatibility and reproducible CI
 
@@ -9,7 +9,9 @@ original non-French fixtures against actual upstream e6c5a70 outputs and old
 WCAFF1 bytes. The full proofing suite includes these tests. The French workflow
 pins both its action revision and Rust 1.98.1, prints the compiler version, and
 runs `cargo fmt --all -- --check` on Linux, Windows and macOS. Real dictionary
-inputs retain their revision and byte checksums.
+inputs retain their revision and byte checksums. Changes to
+`assets/hyphenation/fr.pat` trigger this workflow on pull requests and main pushes,
+including changes to that pattern file alone.
 
 ## Baseline for review
 
@@ -88,6 +90,7 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-20 | trivial | French hyphenation pattern asset included in both workflow path filters so pattern-only changes run the proofing regressions |
 | 2026-10-20 | minor | Frozen pre-French affix outputs and legacy compact dictionaries agree; French CI pins Rust 1.98.1 and checks formatting on all three desktop systems |
 | 2026-10-20 | minor | Explicit desktop download button, verified atomic installation, live activation and saved folder; existing dictionaries retained |
 | 2026-10-20 | major | Integration checklist, explicit real-dictionary gate, feedback format and staged French follow-ups |

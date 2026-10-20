@@ -5,6 +5,7 @@ on:
     paths:
       - 'Cargo*'
       - 'crates/proof/**'
+      - 'assets/hyphenation/fr.pat'
       - 'apps/wordcraft/**'
       - 'crates/ui-egui/**'
       - 'crates/engine/src/cmd/review.rs'
@@ -17,6 +18,7 @@ on:
     paths:
       - 'Cargo*'
       - 'crates/proof/**'
+      - 'assets/hyphenation/fr.pat'
       - 'apps/wordcraft/**'
       - 'crates/ui-egui/**'
       - 'crates/engine/src/cmd/review.rs'
