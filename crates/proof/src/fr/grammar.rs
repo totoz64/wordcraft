@@ -505,22 +505,73 @@ fn check_in_impl(text: &str, lang: ProofLang, preserve_conflicting_elisions: boo
     straight_quotes(text, &mut v);
     repeated_words(text, &ws, &mut v);
     sentence_capitals(text, &ws, &mut v);
-    elisions(text, &ws, &mut v);
-    super::conjugation::check(text, &ws, &mut v);
-    super::agreement::check(text, &ws, &mut v);
-    if let Some(subject) = super::subject_agreement::check(text, &ws) {
-        // Agreement takes precedence over a conflicting apostrophe-only fix: `Je est`
-        // needs `Je suis`, never `J’est`. Unrelated typography suggestions are retained.
-        if !preserve_conflicting_elisions {
-            v.retain(|old| !(old.message.starts_with("Élision") && old.start < subject.end && subject.start < old.end));
+    if !written_pronoun_context(text, &ws) {
+        elisions(text, &ws, &mut v);
+        super::conjugation::check(text, &ws, &mut v);
+        super::agreement::check(text, &ws, &mut v);
+        if let Some(subject) = super::subject_agreement::check(text, &ws) {
+            // Agreement takes precedence over a conflicting apostrophe-only fix: `Je est`
+            // needs `Je suis`, never `J’est`. Unrelated typography suggestions are retained.
+            if !preserve_conflicting_elisions {
+                v.retain(|old| !(old.message.starts_with("Élision") && old.start < subject.end && subject.start < old.end));
+            }
+            v.push(subject);
         }
-        v.push(subject);
     }
     for i in &mut v {
         i.lang = lang;
     }
     v.sort_by_key(|i| (i.start, i.end));
     v
+}
+
+/// A narrow explicit mention: initial personal-pronoun word + third-singular
+/// copula, then a pronoun-class name or a written-style marker within eight words.
+/// This does not infer unmarked autonyms. Primary descriptions:
+/// https://vitrinelinguistique.oqlf.gouv.qc.ca/24686/la-grammaire/les-determinants/determinants-definis/determinant-defini-devant-un-autonyme
+/// https://vitrinelinguistique.oqlf.gouv.qc.ca/24379/la-typographie/mise-en-relief/italique/emploi-de-litalique-pour-les-autonymes-et-les-mots-de-registres-differents
+fn written_pronoun_context(text: &str, ws: &[(usize, usize)]) -> bool {
+    if !super::conjugation::is_prose(text) {
+        return false;
+    }
+    let (Some(&(a, b)), Some(&(c, d))) = (ws.first(), ws.get(1)) else { return false };
+    let horizontal = |gap: &str| !gap.is_empty() && gap.chars().all(|c| matches!(c, ' ' | '\u{a0}' | '\u{202f}'));
+    let Some(subject) = text.get(a..b).filter(|word| word.len() <= 16 && !word.chars().skip(1).any(char::is_uppercase)) else { return false };
+    if !text.get(..a).is_some_and(|prefix| prefix.trim().is_empty())
+        || !text.get(b..c).is_some_and(horizontal)
+        || !matches!(subject.to_lowercase().as_str(), "je" | "tu" | "il" | "elle" | "on" | "nous" | "vous" | "ils" | "elles")
+    {
+        return false;
+    }
+    let Some(copula) = text.get(c..d) else { return false };
+    let (next, mut previous_end) = if matches!(copula, "est" | "était" | "fut" | "sera" | "serait" | "soit" | "fût") {
+        (2usize, d)
+    } else if matches!(copula, "a" | "avait" | "eut" | "aura" | "aurait" | "ait" | "eût") {
+        let Some(&(e, f)) = ws.get(2) else { return false };
+        if !text.get(d..e).is_some_and(horizontal) || text.get(e..f) != Some("été") {
+            return false;
+        }
+        (3usize, f)
+    } else {
+        return false;
+    };
+    let mut previous_en = false;
+    let first_predicate = ws.get(next).and_then(|&(start, end)| text.get(start..end));
+    for (offset, &(start, end)) in ws.iter().skip(next).take(8).enumerate() {
+        let (Some(gap), Some(word)) = (text.get(previous_end..start), text.get(start..end).filter(|word| word.len() <= 32)) else { return false };
+        // Do not consume a marker from another sentence or clause.
+        if gap.chars().any(|c| matches!(c, '.' | '!' | '?' | ';' | ':' | ',')) {
+            return false;
+        }
+        if (matches!(word, "pronom" | "pronoms") && (offset == 0 || (offset == 1 && matches!(first_predicate, Some("un" | "le" | "ce")))))
+            || (previous_en && horizontal(gap) && matches!(word, "gras" | "italique" | "italiques" | "majuscules" | "minuscules"))
+        {
+            return true;
+        }
+        previous_en = word == "en";
+        previous_end = end;
+    }
+    false
 }
 
 #[cfg(test)]

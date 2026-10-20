@@ -148,6 +148,11 @@ jobs:
           WORDCRAFT_FRENCH_LEXICON: ${{ runner.temp }}/wordcraft-french-morphology/lexique-grammalecte-fr-v7.7.txt
         run: cargo test --locked -p wordcraft-proof --test french_clitic_agreement -- --ignored
 
+      - name: Required real French written-pronoun context gate
+        env:
+          WORDCRAFT_DICTIONARIES: ${{ runner.temp }}/wordcraft-french-morphology
+        run: cargo test --locked -p wordcraft-proof --test french_written_pronouns_real -- --ignored
+
       - name: Required real French reflexive auxiliary gate
         env:
           WORDCRAFT_DICTIONARIES: ${{ runner.temp }}/wordcraft-french-morphology
