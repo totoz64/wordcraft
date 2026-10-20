@@ -67,9 +67,74 @@ fn real_lexicon_preserves_persons_tenses_and_ambiguous_readings() {
     for form in ["suis", "sommes", "portes"] {
         assert!(lexicon.agreement_forms(form, Person::SecondSingular).is_none(), "preserve a valid reading of {form}");
     }
+    for (infinitive, expected) in
+        [("écrire", "écrit"), ("classer", "classé"), ("numériser", "numérisé"), ("traduire", "traduit"), ("résoudre", "résolu")]
+    {
+        let forms = lexicon.participle_forms(infinitive, Person::FirstSingular, false, false).unwrap();
+        assert!(forms.iter().any(|s| s == expected), "{infinitive}: {forms:?}");
+        for form in forms {
+            assert!(lexicon.is_past_participle(&form));
+        }
+    }
+    // Data-path coverage and stable outputs, not a real-world precision estimate.
+    use std::io::{BufRead, BufReader};
+    let mut infinitives = std::collections::BTreeSet::new();
+    for line in BufReader::new(std::fs::File::open(&path).unwrap()).lines() {
+        let line = line.unwrap();
+        let fields: Vec<&str> = line.split('\t').collect();
+        if fields.len() == 20
+            && fields.first().is_some_and(|v| v.parse::<u32>().is_ok())
+            && fields.get(4).is_some_and(|v| v.split_whitespace().any(|tag| tag == "infi"))
+            && let Some(form) = fields.get(2)
+            && form.chars().all(char::is_lowercase)
+        {
+            infinitives.insert((*form).to_owned());
+        }
+    }
     let folder = std::path::Path::new(&path).parent().unwrap();
     wordcraft_proof::set_dictionaries_folder(Some(folder.to_owned()));
+    let mut covered = 0usize;
+    for infinitive in infinitives {
+        if let Some(forms) = lexicon.participle_forms(&infinitive, Person::FirstSingular, false, false) {
+            covered += 1;
+            assert!(!forms.is_empty());
+            let tail = if matches!(infinitive.as_str(), "pouvoir" | "devoir") { " partir." } else { "." };
+            let text = format!("J’ai {infinitive}{tail}");
+            let issues = grammar::check(&text);
+            assert_eq!(issues.len(), 1, "whole grammar path: {text}: {issues:?}");
+            assert_eq!(&text[issues[0].start..issues[0].end], infinitive);
+            assert!(issues[0].suggestions.iter().all(|s| lexicon.is_past_participle(s)), "{text}: {issues:?}");
+            for suggestion in &issues[0].suggestions {
+                let fixed = format!("{}{suggestion}{}", &text[..issues[0].start], &text[issues[0].end..]);
+                assert!(grammar::check(&fixed).is_empty(), "stable grammar path: {fixed}");
+            }
+            for form in forms {
+                assert!(lexicon.is_past_participle(&form), "{infinitive} → {form}");
+                assert!(lexicon.participle_forms(&form, Person::FirstSingular, false, false).is_none(), "stable: {form}");
+            }
+        }
+    }
+    eprintln!("{covered} simple infinitives have a supported avoir/first-singular participle reading without an object cue");
+    assert!(covered > 4_000, "exercise broad real lexical coverage, not a tiny table");
     for lang in [ProofLang::Fr, ProofLang::FrCa] {
+        for (text, wrong, right) in [
+            ("J’ai classer ces archives.", "classer", "classé"),
+            ("J’avais numériser ces pages.", "numériser", "numérisé"),
+            ("Tu aurais archiver ce dossier.", "archiver", "archivé"),
+            ("Nous avons nettoyer ce local.", "nettoyer", "nettoyé"),
+            ("Vous auriez traduire cette page.", "traduire", "traduit"),
+            ("Elle aura peindre ces murs.", "peindre", "peint"),
+            ("Il avait falloir agir.", "falloir", "fallu"),
+            ("J’ai rentrer les chaises.", "rentrer", "rentré"),
+            ("J’ai monter une étagère.", "monter", "monté"),
+        ] {
+            let found = grammar::check_in(text, lang);
+            assert_eq!(found.len(), 1, "{text}: {found:?}");
+            assert_eq!(&text[found[0].start..found[0].end], wrong);
+            assert!(found[0].suggestions.iter().any(|s| s == right), "{text}: {found:?}");
+            let fixed = format!("{}{right}{}", &text[..found[0].start], &text[found[0].end..]);
+            assert!(grammar::check_in(&fixed, lang).is_empty(), "{fixed}");
+        }
         let text = "C’est nous qui manges une pomme.";
         let issues = grammar::check_in(text, lang);
         assert_eq!(issues.len(), 1, "{issues:?}");

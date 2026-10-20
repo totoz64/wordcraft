@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (explicit French verb-form data installation; baseline #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French irregular participles and five avoir tenses; baseline #1660)
 
 ## Baseline for review
 
@@ -25,36 +25,59 @@ General subject–verb agreement, gender/number agreement and contextual homopho
 checked. Conjugation coverage is limited to the first cases below. No automatic document-wide
 correction is applied.
 
-## First grammar and conjugation increment
+## Infinitive/participle and elision checks
 
-This follow-up is kept separate from installation and the baseline's integration review.
-It adds two small rules, in both `fr-FR` and `fr-CA`:
+Both `fr-FR` and `fr-CA` support these bounded suggestions:
 
 - `si il` / `si ils` → `s’il` / `s’ils`. `si elle`, `si elles`, `si on`, names and words separated
   by punctuation remain unchanged. This follows the [OQLF rule on obligatory elision](https://vitrinelinguistique.oqlf.gouv.qc.ca/21737/lorthographe/elision-et-apostrophe/elision-obligatoire).
-- `J’ai manger` → `J’ai mangé`, and equivalent subject + present `avoir` beginnings such as
-  `Tu as écouter` → `Tu as écouté`. The first rule covers only a paragraph's initial phrase and
-  24 explicitly listed first-group verbs; it does not guess from an arbitrary `-er` ending.
-  `Je vais manger`, `J’ai entendu chanter`, preceding objects, quotations, code, tables and
-  detected metalinguistic examples remain outside this rule. The [OQLF distinction between
-  infinitive and participle](https://vitrinelinguistique.oqlf.gouv.qc.ca/21614/la-grammaire/le-verbe/modes/infinitif/distinction-entre-linfinitif-et-le-participe-passe)
-  explains why replacing every infinitive after a verb would be incorrect. The simple
-  auxiliary forms were checked against the [Académie's avoir conjugation](https://www.dictionnaire-academie.fr/conjuguer/A9A3461).
+- A paragraph-initial subject followed by correctly matched **avoir** can suggest a participle:
+  `J’ai manger` → `J’ai mangé`, `J’avais écrire` → `J’avais écrit`,
+  `Nous aurions prendre` → `Nous aurions pris`. Supported auxiliary tenses are present,
+  imperfect, future, conditional and simple past, checked against the
+  [Académie conjugation](https://www.dictionnaire-academie.fr/conjuguer/A9A3461).
+  One separated dialogue/list dash (`—`, `–`, `-`) may precede the subject.
 
-The finite tables and synthetic sentences are original; no third-party corpus or dictionary
-prose is imported. This is an initial, deliberately narrow check, not general conjugation or
-participle agreement. It can miss mistakes in quotations, later clauses and other verbs.
+There are 66 original fallback infinitive/participle pairs, including irregular verbs. Optional
+data supplies additional recorded forms; no arbitrary ending is transformed. A valid recorded
+participle reading stays quiet. Verbs requiring être, unknown auxiliary choices and unavailable
+forms are declined. Data indicating a transitive active use permits avoir, following the
+[OQLF auxiliary table](https://vitrinelinguistique.oqlf.gouv.qc.ca/24584/la-grammaire/le-verbe/auxiliaires/tableau-synthese-de-lemploi-des-auxiliaires-avoir-et-etre).
+For mixed/uncertain transitive–intransitive uses, an adjacent object determiner is required;
+impersonal verbs require explicit `il`. Bare `pouvoir`/`devoir` can be nouns, so those two
+modal readings additionally require an adjacent known infinitive complement.
 
-`crates/proof/tests/french_grammar.rs` separates original errors, correct text and unsupported
-errors. The last category is not counted as correct-text precision data. Every targeted error
-must have the expected byte range and suggestion; each suggested correction must stop triggering
-the new rule. Correct-text examples must produce no new alerts. These are small synthetic
-regressions, not an estimate of a real-world false-positive rate. The table test separately
-checks every supported verb and subject combination and its corrected counterpart.
+`Je vais manger`, `J’ai entendu chanter`, preceding objects/clitics, negation, intervening
+adverbs, quotations, code, tables, legacy `--` dialogue prefixes and detected metalinguistic
+examples remain outside this rule. It does not choose an auxiliary or resolve participle
+agreement. The [OQLF distinction between infinitive and participle](https://vitrinelinguistique.oqlf.gouv.qc.ca/21614/la-grammaire/le-verbe/modes/infinitif/distinction-entre-linfinitif-et-le-participe-passe)
+explains why replacing every infinitive after a verb would be incorrect.
 
-The engine integration test exercises F7, Change, Undo and **Mark grammar errors as you type**
-off/on using the same commands as the desktop UI. Installation, spelling and typing behaviour
-are unchanged by this increment.
+`french_grammar.rs` and `french_participles.rs` separate original errors, correct text and
+ambiguous/unsupported constructions. Unsupported errors do not count as correct-text precision
+data. Every targeted error checks exact byte ranges and suggestions, then verifies stable
+corrected text. An additional table checks 3,300 subject/tense/verb combinations and their
+3,300 corrected counterparts. The explicit real-data test exercises the whole grammar path for
+6,057 supported simple infinitives in the defined first-person context (an infinitive complement
+is supplied for the ambiguous modals), including canonical suggested forms and stable results.
+These are synthetic/data coverage checks, not a real-world precision estimate.
+
+An optional `french_prose` test uses external French prose, never bundled in this repository.
+The recorded local run used 9,486 original paragraphs from four books, with 42 auxiliary
+beginnings, plus 2,889 separately labelled variants replacing only a leading `--` by `— `,
+with 47 auxiliary beginnings. There were 79 unquoted eligible beginnings and no new participle
+alerts. Counts include overlapping variants and are a smoke check, not statistical precision
+or broad grammar coverage. See [source metadata and normalization](french-prose-sources.json).
+Input format is UTF-8 `source<TAB>paragraph` per line, bounded to 8 MB; set
+`WORDCRAFT_FRENCH_PROSE` and `WORDCRAFT_FRENCH_LEXICON`, then run:
+
+```sh
+cargo test --locked -p wordcraft-proof --test french_prose -- --ignored --nocapture
+```
+
+Engine integration exercises F7, Change, Undo and **Mark grammar errors as you type** off/on.
+It also fixes `Je avais écrire` in two steps, verifying recomputed UTF-8 ranges after elision
+and two undos restoring the original text. Suggestions never rewrite the document automatically.
 
 ## Personal-cleft agreement and optional morphology
 
@@ -106,8 +129,11 @@ contains linguistic TSV data under **MPL 2.0**, confirmed in its own README and 
 Archive SHA-256: `bdccf2065e252010253171000a38de84581407896b6bc60aca7d4d69dab7e4d2`.
 Retain `README_lexique.txt` and its licence notice with the data. The original Rust
 reader does not use Grammalecte grammar code. The real-data gate currently reads
-274,427 finite analyses; nouns, infinitives, imperatives and participles are not
-treated as finite readings. File size, line length, row count and index fan-out are bounded.
+274,427 finite analyses, kept separate from the new infinitive/canonical-participle index;
+nouns and imperatives are not retained as verbal readings. Canonical participles are masculine
+singular or invariant forms, not guessed agreement variants. File size, line length, retained
+row count and index fan-out are bounded across finite and nonfinite records. The public finite
+analysis count and installer readiness remain unchanged.
 An unreadable optional file records a diagnostic through `fr::morphology::load_error()`
 and leaves the builtin rules available. A successful reload clears the diagnostic.
 
@@ -186,6 +212,7 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-20 | minor | French irregular participles: five avoir tenses, 66 original fallback pairs, bounded optional lexical coverage and separate prose smoke gate; no general agreement claim |
 | 2026-10-20 | minor | Explicit desktop French verb-form data installation: pinned MPL-2.0 archive, bounded ZIP members, atomic activation, retained manual files, shared installation interlock and live reload; no general-grammar or readiness-estimate claim |
 | 2026-10-20 | minor | Personal-cleft agreement, ambiguity-aware optional MPL-2.0 finite morphology, bounded reader, fallback/reload diagnostics and explicit pinned real-data coverage |
 | 2026-10-20 | minor | Bounded avoir + first-group participle suggestions, si il/ils elision, original error/quiet/unsupported regressions and command-level apply/undo tests |

@@ -1,4 +1,4 @@
-//! French finite-verb morphology, read from the external MPL-2.0 Dicollecte lexicon.
+//! French verb morphology, read from the external MPL-2.0 Dicollecte lexicon.
 //!
 //! This reader is original Rust code. It consumes the published TSV data format, not any
 //! Grammalecte grammar code. The optional file is never bundled. Without it, four small
@@ -21,6 +21,11 @@ const MAX_RECORDS: usize = 600_000;
 const MAX_LEMMA_RECORDS: usize = 2048;
 const MAX_FORM_RECORDS: usize = 64;
 const MAX_WORD_BYTES: usize = 128;
+const INFINITIVE: u8 = 1;
+const PARTICIPLE: u8 = 2;
+const AVOIR: u8 = 1;
+const AVOIR_WITH_OBJECT: u8 = 2;
+const IMPERSONAL: u8 = 4;
 
 /// Grammatical person and number. Polite singular `vous` still takes SecondPlural.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -45,6 +50,8 @@ struct Record {
     lemma: u32,
     tenses: u8,
     persons: u8,
+    nonfinite: u8,
+    auxiliary: u8,
 }
 
 /// Immutable compact indexes: a form may have several lemmas, tenses and persons.
@@ -53,6 +60,29 @@ pub struct Lexicon {
     lemmas: Vec<String>,
     records: Vec<Record>,
     by_lemma: Vec<(u32, usize)>,
+    finite_len: usize,
+}
+
+/// In the pinned 7.7 annotation, the last two slots concern être/avoir. `zz` does
+/// not identify an auxiliary. In that case only an explicitly transitive active
+/// construction can establish avoir (OQLF's auxiliary table); intransitive-only
+/// and unfamiliar annotations remain unsupported. This is not a guess from spelling.
+fn avoir_policy(tag: &str) -> u8 {
+    let bytes = tag.as_bytes();
+    if bytes.len() != 10 || !tag.is_ascii() {
+        return 0;
+    }
+    let policy = match bytes.get(8..10) {
+        Some(b"_a") => AVOIR,
+        Some(b"ea") => AVOIR_WITH_OBJECT,
+        Some(b"zz") if bytes.get(4) == Some(&b't') || bytes.get(5) == Some(&b'n') => match bytes.get(3) {
+            Some(b'_') => AVOIR,
+            Some(b'i') => AVOIR_WITH_OBJECT,
+            _ => 0,
+        },
+        _ => 0,
+    };
+    policy | if bytes.get(7) == Some(&b'm') { IMPERSONAL } else { 0 }
 }
 
 fn tense(feature: &str) -> u8 {
@@ -82,7 +112,8 @@ fn person(feature: &str) -> u8 {
 
 impl Lexicon {
     /// Parse the public 20-column TSV. Reads, rows, fields and index fan-out are bounded.
-    /// Non-verbal and non-finite entries are deliberately outside this first index.
+    /// Retains finite readings and canonical (masculine singular/invariable) participles,
+    /// with infinitive/auxiliary annotations. Non-verbal entries remain outside the index.
     pub fn from_reader(input: impl Read) -> Result<Self, String> {
         let mut input = BufReader::new(input);
         let mut line = String::new();
@@ -93,6 +124,7 @@ impl Lexicon {
         let mut lexicon = Self::default();
         let mut lemma_ids = HashMap::<String, u32>::new();
         let mut lemma_counts = Vec::<usize>::new();
+        let mut retained = 0usize;
         loop {
             line.clear();
             let read = (&mut input).take(MAX_LINE as u64 + 1).read_line(&mut line).map_err(|e| format!("French morphology: {e}"))?;
@@ -127,17 +159,33 @@ impl Lexicon {
                 return Err(format!("Missing French morphology fields at line {line_number}"));
             };
             let mut features = features.split_whitespace();
-            if !features.next().is_some_and(|tag| tag.starts_with('v')) {
-                continue;
-            }
+            let Some(tag) = features.next().filter(|tag| tag.starts_with('v')) else { continue };
             let (mut tenses, mut persons, mut imperative) = (0u8, 0u8, false);
+            let (mut infinitive, mut participle, mut masculine, mut epicene, mut singular, mut invariant) =
+                (false, false, false, false, false, false);
             for feature in features {
                 tenses |= tense(feature);
                 persons |= person(feature);
                 imperative |= feature == "impe";
+                infinitive |= feature == "infi";
+                participle |= feature == "ppas";
+                masculine |= feature == "mas";
+                epicene |= feature == "epi";
+                singular |= feature == "sg";
+                invariant |= feature == "inv";
             }
-            if tenses == 0 || persons == 0 || imperative {
+            if imperative {
                 continue;
+            }
+            let finite = tenses != 0 && persons != 0;
+            let nonfinite = if infinitive { INFINITIVE } else { 0 }
+                | if participle && ((masculine && (singular || invariant)) || (epicene && invariant)) { PARTICIPLE } else { 0 };
+            if !finite && nonfinite == 0 {
+                continue;
+            }
+            if !finite {
+                tenses = 0;
+                persons = 0;
             }
             if form.is_empty() || lemma.is_empty() || form.len() > MAX_WORD_BYTES || lemma.len() > MAX_WORD_BYTES {
                 return Err(format!("Invalid French morphology word at line {line_number}"));
@@ -153,12 +201,20 @@ impl Lexicon {
             };
             let count = usize::try_from(id).ok().and_then(|i| lemma_counts.get_mut(i)).ok_or("Invalid French lemma index")?;
             *count = count.saturating_add(1);
-            if *count > MAX_LEMMA_RECORDS || lexicon.records.len() >= MAX_RECORDS {
+            retained = retained.saturating_add(1);
+            if *count > MAX_LEMMA_RECORDS || retained > MAX_RECORDS {
                 return Err("French morphology has too many entries for one lemma or file".into());
             }
-            lexicon.records.push(Record { form: form.to_owned(), lemma: id, tenses, persons });
+            lexicon.records.push(Record {
+                form: form.to_owned(),
+                lemma: id,
+                tenses,
+                persons,
+                nonfinite,
+                auxiliary: if infinitive { avoir_policy(tag) } else { 0 },
+            });
         }
-        if !header || lexicon.records.is_empty() {
+        if !header || !lexicon.records.iter().any(|record| record.tenses != 0) {
             return Err("French morphology has no supported finite-verb entries".into());
         }
         lexicon.finish();
@@ -175,8 +231,18 @@ impl Lexicon {
     }
 
     fn finish(&mut self) {
-        self.records.sort_unstable_by(|a, b| (&a.form, a.lemma, a.tenses, a.persons).cmp(&(&b.form, b.lemma, b.tenses, b.persons)));
-        self.records.dedup_by(|a, b| a.form == b.form && a.lemma == b.lemma && a.tenses == b.tenses && a.persons == b.persons);
+        self.records.sort_unstable_by(|a, b| {
+            (&a.form, a.lemma, a.tenses, a.persons, a.nonfinite, a.auxiliary).cmp(&(&b.form, b.lemma, b.tenses, b.persons, b.nonfinite, b.auxiliary))
+        });
+        self.records.dedup_by(|a, b| {
+            a.form == b.form
+                && a.lemma == b.lemma
+                && a.tenses == b.tenses
+                && a.persons == b.persons
+                && a.nonfinite == b.nonfinite
+                && a.auxiliary == b.auxiliary
+        });
+        self.finite_len = self.records.iter().filter(|record| record.tenses != 0).count();
         self.by_lemma = self.records.iter().enumerate().map(|(i, record)| (record.lemma, i)).collect();
         self.by_lemma.sort_unstable();
     }
@@ -195,7 +261,7 @@ impl Lexicon {
             lexicon.lemmas.push(lemma.to_owned());
             for (index, form) in forms.into_iter().enumerate() {
                 let persons = 1u8.checked_shl(u32::try_from(index).unwrap_or(u32::MAX)).unwrap_or_default();
-                lexicon.records.push(Record { form: form.to_owned(), lemma: id, tenses: 1, persons });
+                lexicon.records.push(Record { form: form.to_owned(), lemma: id, tenses: 1, persons, nonfinite: 0, auxiliary: 0 });
             }
         }
         lexicon.finish();
@@ -204,11 +270,11 @@ impl Lexicon {
 
     /// Number of retained finite-verb analyses, not a count of all lexical entries.
     pub fn len(&self) -> usize {
-        self.records.len()
+        self.finite_len
     }
 
     pub fn is_empty(&self) -> bool {
-        self.records.is_empty()
+        self.finite_len == 0
     }
 
     fn analyses(&self, form: &str) -> &[Record] {
@@ -243,6 +309,58 @@ impl Lexicon {
         suggestions.sort_unstable();
         suggestions.dedup();
         if suggestions.is_empty() { None } else { Some(suggestions.into_iter().take(8).map(str::to_owned).collect()) }
+    }
+
+    /// A supported canonical past-participle reading must not be "corrected" as an infinitive.
+    pub fn is_past_participle(&self, form: &str) -> bool {
+        form.len() <= MAX_WORD_BYTES && self.analyses(form).iter().any(|r| r.nonfinite & PARTICIPLE != 0)
+    }
+
+    /// Whether the data explicitly records this infinitive, regardless of its auxiliary.
+    pub fn is_infinitive(&self, form: &str) -> bool {
+        form.len() <= MAX_WORD_BYTES && self.analyses(form).iter().any(|r| r.nonfinite & INFINITIVE != 0)
+    }
+
+    /// Known infinitive → masculine-singular/invariable participles, after an already matched
+    /// subject + avoir. `impersonal_il` means the actual subject is `il`, not merely any third
+    /// singular pronoun. Mixed/unspecified transitive constructions require `direct_object`.
+    /// This does not choose an auxiliary, infer gender, derive endings or resolve word senses.
+    pub fn participle_forms(&self, form: &str, subject: Person, impersonal_il: bool, direct_object: bool) -> Option<Vec<String>> {
+        if form.len() > MAX_WORD_BYTES || self.is_past_participle(form) {
+            return None;
+        }
+        let mut found = false;
+        let mut suggestions = Vec::new();
+        for infinitive in self.analyses(form).iter().filter(|r| r.nonfinite & INFINITIVE != 0) {
+            found = true;
+            let policy = infinitive.auxiliary;
+            if policy & (AVOIR | AVOIR_WITH_OBJECT) == 0
+                || (policy & AVOIR_WITH_OBJECT != 0 && !direct_object)
+                || (policy & IMPERSONAL != 0 && !impersonal_il)
+            {
+                return None; // An unsupported reading is not silently discarded.
+            }
+            let start = self.by_lemma.partition_point(|(lemma, _)| *lemma < infinitive.lemma);
+            let end = self.by_lemma.partition_point(|(lemma, _)| *lemma <= infinitive.lemma);
+            let records = self.by_lemma.get(start..end).unwrap_or_default();
+            if !records.iter().any(|(_, index)| self.records.get(*index).is_some_and(|r| r.tenses != 0 && r.persons & subject.bit() != 0)) {
+                return None; // Preserve defective/impersonal paradigms and incomplete data.
+            }
+            let previous_count = suggestions.len();
+            for (_, index) in records {
+                if let Some(record) = self.records.get(*index)
+                    && record.nonfinite & PARTICIPLE != 0
+                {
+                    suggestions.push(record.form.as_str());
+                }
+            }
+            if suggestions.len() == previous_count {
+                return None; // Do not hide an incomplete homograph behind another lemma's forms.
+            }
+        }
+        suggestions.sort_unstable();
+        suggestions.dedup();
+        if !found || suggestions.is_empty() { None } else { Some(suggestions.into_iter().take(8).map(str::to_owned).collect()) }
     }
 }
 
@@ -354,6 +472,56 @@ mod tests {
     }
 
     #[test]
+    fn participles_follow_recorded_forms_and_retain_auxiliary_uncertainty() {
+        let data = table(&[
+            ("écrire", "écrire", "v3_itnq__a infi"),
+            ("écris", "écrire", "v3_itnq__a ipre 1sg 2sg"),
+            ("écrit", "écrire", "v3_itnq__a ppas mas sg"),
+            ("classer", "classer", "v1__t___zz infi"),
+            ("classe", "classer", "v1__t___zz ipre 1sg 3sg"),
+            ("classé", "classer", "v1__t___zz ppas mas sg"),
+            ("rentrer", "rentrer", "v1_it___zz infi"),
+            ("rentre", "rentrer", "v1_it___zz ipre 1sg 3sg"),
+            ("rentré", "rentrer", "v1_it___zz ppas mas sg"),
+            ("aller", "aller", "v1_i__e_e_ infi"),
+            ("vais", "aller", "v1_i__e_e_ ipre 1sg"),
+            ("allé", "aller", "v1_i__e_e_ ppas mas sg"),
+            ("jaser", "jaser", "v1_i____zz infi"),
+            ("jase", "jaser", "v1_i____zz ipre 1sg 3sg"),
+            ("jasé", "jaser", "v1_i____zz ppas mas sg"),
+            ("falloir", "falloir", "v3__tnem_a infi"),
+            ("faut", "falloir", "v3__tnem_a ipre 3sg"),
+            ("fallu", "falloir", "v3__tnem_a ppas epi inv"),
+            ("tester", "tester", "v1__t____a infi"),
+            ("teste", "tester", "v1__t____a ipre 1sg 3sg"),
+        ]);
+        let lexicon = Lexicon::from_reader(data.as_bytes()).unwrap();
+        assert_eq!(lexicon.len(), 7, "public analysis count remains finite-only");
+        let first = Person::FirstSingular;
+        assert_eq!(lexicon.participle_forms("écrire", first, false, false), Some(vec!["écrit".into()]));
+        assert_eq!(lexicon.participle_forms("classer", first, false, false), Some(vec!["classé".into()]));
+        assert!(lexicon.participle_forms("rentrer", first, false, false).is_none());
+        assert_eq!(lexicon.participle_forms("rentrer", first, false, true), Some(vec!["rentré".into()]));
+        for form in ["aller", "jaser", "tester", "inventer-un-mot", "écrit"] {
+            assert!(lexicon.participle_forms(form, first, false, false).is_none(), "{form}");
+        }
+        assert!(lexicon.is_past_participle("écrit"));
+        assert!(!lexicon.is_past_participle("écrire"));
+        assert!(lexicon.participle_forms("falloir", first, true, false).is_none());
+        assert!(lexicon.participle_forms("falloir", Person::ThirdSingular, false, false).is_none());
+        assert_eq!(lexicon.participle_forms("falloir", Person::ThirdSingular, true, false), Some(vec!["fallu".into()]));
+        let incomplete_homograph = table(&[
+            ("classer", "classer", "v1__t___zz infi"),
+            ("classe", "classer", "v1__t___zz ipre 1sg"),
+            ("classé", "classer", "v1__t___zz ppas mas sg"),
+            ("classer", "autre-lecture", "v1__t___zz infi"),
+            ("classe", "autre-lecture", "v1__t___zz ipre 1sg"),
+        ]);
+        let incomplete = Lexicon::from_reader(incomplete_homograph.as_bytes()).unwrap();
+        assert!(incomplete.participle_forms("classer", first, false, false).is_none(), "every infinitive reading needs a recorded participle");
+    }
+
+    #[test]
     fn malformed_or_oversized_data_is_rejected_without_panicking() {
         for data in [String::new(), "not a table".into(), table(&[("a", "avoir", "v0 mystery 3sg")]), "x".repeat(MAX_LINE + 1)] {
             assert!(Lexicon::from_reader(data.as_bytes()).is_err());
@@ -363,5 +531,11 @@ mod tests {
         assert!(Lexicon::from_reader(&[0xff, 0xfe][..]).is_err());
         let too_many = table(&vec![("a", "avoir", "v0 ipre 3sg"); MAX_LEMMA_RECORDS + 1]);
         assert!(Lexicon::from_reader(too_many.as_bytes()).is_err());
+        let mut excessive = vec![("a".to_owned(), "avoir".to_owned(), "v0 ipre 3sg".to_owned())];
+        for index in 0..=MAX_FORM_RECORDS {
+            excessive.push(("tester".into(), format!("verbe{index}"), "v1__t___zz infi".into()));
+        }
+        let rows: Vec<_> = excessive.iter().map(|(form, lemma, tags)| (form.as_str(), lemma.as_str(), tags.as_str())).collect();
+        assert!(Lexicon::from_reader(table(&rows).as_bytes()).is_err(), "non-finite analyses share the per-form input bound");
     }
 }

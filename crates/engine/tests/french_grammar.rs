@@ -26,13 +26,16 @@ fn drawn_grammar_marks(session: &mut Session) -> usize {
 fn french_grammar_suggestions_apply_and_undo_in_both_regions() {
     wordcraft_proof::fr::install_dictionary(
         "SET UTF-8\nICONV 1\nICONV ’ '\n",
-        "14\nj'ai\nmanger\nmangé\nsi\nil\ns'il\nvient\ntu\nas\nc'est\nmoi\nqui\nest\nsuis\n",
+        "19\nj'ai\nmanger\nmangé\nsi\nil\ns'il\nvient\ntu\nas\nc'est\nmoi\nqui\nest\nsuis\nj'avais\nécrire\nécrit\nje\navais\n",
     )
     .unwrap();
     for language in ["fr-FR", "fr-CA"] {
-        for (original, flagged, suggestion) in
-            [("J’ai manger.", "manger", "mangé"), ("Si il vient.", "Si il", "S’il"), ("C’est moi qui est.", "est", "suis")]
-        {
+        for (original, flagged, suggestion) in [
+            ("J’ai manger.", "manger", "mangé"),
+            ("Si il vient.", "Si il", "S’il"),
+            ("C’est moi qui est.", "est", "suis"),
+            ("J’avais écrire.", "écrire", "écrit"),
+        ] {
             let mut session = Session::new(Document::from_text(original));
             run(&mut session, "select.all", json!({}));
             run(&mut session, "review.language", json!({"lang": language, "default": true}));
@@ -57,5 +60,25 @@ fn french_grammar_suggestions_apply_and_undo_in_both_regions() {
             assert_eq!(restored.as_array().unwrap().len(), 1);
             assert_eq!(restored[0]["text"], flagged);
         }
+        // Elision changes the UTF-8 byte length before the new participle issue. F7 must
+        // recompute its range, then two independent undos must restore both original issues.
+        let mut session = Session::new(Document::from_text("Je avais écrire."));
+        run(&mut session, "select.all", json!({}));
+        run(&mut session, "review.language", json!({"lang":language,"default":true}));
+        assert_eq!(run(&mut session, "review.issues", json!({})).as_array().unwrap().len(), 2);
+        for (wrong, right) in [("Je avais", "J’avais"), ("écrire", "écrit")] {
+            run(&mut session, "caret.docStart", json!({}));
+            let issue = run(&mut session, "review.spelling", json!({}));
+            assert_eq!(issue["text"], wrong);
+            assert!(issue["suggestions"].as_array().unwrap().iter().any(|s| s == right));
+            run(&mut session, "review.applySuggestion", json!({"text":right}));
+        }
+        assert!(run(&mut session, "review.issues", json!({})).as_array().unwrap().is_empty());
+        run(&mut session, "edit.undo", json!({}));
+        run(&mut session, "edit.undo", json!({}));
+        let restored = run(&mut session, "review.issues", json!({}));
+        assert_eq!(restored.as_array().unwrap().len(), 2);
+        assert_eq!(restored[0]["text"], "Je avais");
+        assert_eq!(restored[1]["text"], "écrire");
     }
 }

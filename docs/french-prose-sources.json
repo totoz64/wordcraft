@@ -1,0 +1,54 @@
+{
+  "purpose": "Metadata only; external texts are not bundled. Local regression smoke, not independent precision data.",
+  "normalization": "Strip PG header/footer; join publisher line wraps/whitespace within blank-line-delimited paragraphs. Original records preserve all letters/punctuation. Extra separately labelled modern-dash variants replace only a leading ASCII double hyphen by em dash+space; authors’ words are not rewritten.",
+  "books": [
+    {
+      "ebook": 4650,
+      "title": "Candide, ou l’optimisme",
+      "author": "Voltaire",
+      "metadata": "https://www.gutenberg.org/ebooks/4650",
+      "source": "https://www.gutenberg.org/cache/epub/4650/pg4650.txt",
+      "bytes": 234120,
+      "sha256": "1cc10ab3268a76aa01bd3f9722ae2ae0e5e36b869a18b0bb0832b75bc0327806",
+      "licence_notice": "Metadata: public domain in USA; raw file retains Project Gutenberg terms. Original French authors died1778/1885/1905; input for local regression only, not bundled.",
+      "paragraphs": 385,
+      "modern_dash_variants": 0
+    },
+    {
+      "ebook": 19657,
+      "title": "Notre-Dame de Paris",
+      "author": "Victor Hugo",
+      "metadata": "https://www.gutenberg.org/ebooks/19657",
+      "source": "https://www.gutenberg.org/cache/epub/19657/pg19657.txt",
+      "bytes": 1117118,
+      "sha256": "91e3524d6e7816cda822f97fae3f49af204c7e32ad71ca23002de9e83e935f80",
+      "licence_notice": "Metadata: public domain in USA; raw file retains Project Gutenberg terms. Original French authors died1778/1885/1905; input for local regression only, not bundled.",
+      "paragraphs": 4106,
+      "modern_dash_variants": 1151
+    },
+    {
+      "ebook": 800,
+      "title": "Le tour du monde en quatre-vingts jours",
+      "author": "Jules Verne",
+      "metadata": "https://www.gutenberg.org/ebooks/800",
+      "source": "https://www.gutenberg.org/cache/epub/800/pg800.txt",
+      "bytes": 462173,
+      "sha256": "bd89ef4c406ae063a1eeba2ec0689532e8c83ecfb1fce742cdd22bc47cb888da",
+      "licence_notice": "Metadata: public domain in USA; raw file retains Project Gutenberg terms. Original French authors died1778/1885/1905; input for local regression only, not bundled.",
+      "paragraphs": 2096,
+      "modern_dash_variants": 685
+    },
+    {
+      "ebook": 17489,
+      "title": "Les misérables, tome I: Fantine",
+      "author": "Victor Hugo",
+      "metadata": "https://www.gutenberg.org/ebooks/17489",
+      "source": "https://www.gutenberg.org/cache/epub/17489/pg17489.txt",
+      "bytes": 710496,
+      "sha256": "a5de514ba7b9f2e1790e7e259c4e8b7a35ae1d29e4bf9a5f8767039c58b80503",
+      "licence_notice": "Metadata: public domain in USA; raw file retains Project Gutenberg terms. Original French authors died1778/1885/1905; input for local regression only, not bundled.",
+      "paragraphs": 2899,
+      "modern_dash_variants": 1053
+    }
+  ]
+}

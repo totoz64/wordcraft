@@ -1,6 +1,6 @@
 # WordCraft roadmap: milestones and what's next
 
-> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-20 · **Change:** minor (explicit French verb-form data installation; baseline #1660); previously trivial (M6: Manage Sources imports Word's `Sources.xml`, #2640; previously minor: Czech proofing review fixes; previously minor: Portuguese proofing; previously minor: Polish interface and Polish proofing; previously trivial: M7: formatting revisions landed, #41; previously trivial: M5: Draw Table and Eraser landed, #303; previously minor: beta distance restated: ~15 points, ~150–230 h; previously: alpha gate checked: six core workflows pass; previously major: milestones moved here from ROADMAP.md; Current focus set from the re-measured gaps) · **Target:** Microsoft Word (Microsoft 365) for Mac 16.113.4
+> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-20 · **Change:** minor (French irregular participles and five avoir tenses; baseline #1660); previously trivial (M6: Manage Sources imports Word's `Sources.xml`, #2640; previously minor: Czech proofing review fixes; previously minor: Portuguese proofing; previously minor: Polish interface and Polish proofing; previously trivial: M7: formatting revisions landed, #41; previously trivial: M5: Draw Table and Eraser landed, #303; previously minor: beta distance restated: ~15 points, ~150–230 h; previously: alpha gate checked: six core workflows pass; previously major: milestones moved here from ROADMAP.md; Current focus set from the re-measured gaps) · **Target:** Microsoft Word (Microsoft 365) for Mac 16.113.4
 
 Forward-looking plan. The summary is [`ROADMAP.md`](../ROADMAP.md); the ranked work list is
 [`gaps.md`](gaps.md); the numbers are in [`target-app-parity.md`](target-app-parity.md). Hours are
@@ -74,6 +74,7 @@ languages, screen-reader access, ecosystem decisions (VBA, add-ins, cloud), an i
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-20 | minor | French irregular participles: five avoir tenses, 66 original fallback pairs, bounded optional lexical coverage and separate prose smoke gate; no general agreement claim |
 | 2026-10-20 | minor | Explicit desktop French verb-form data installation: pinned MPL-2.0 archive, bounded ZIP members, atomic activation, retained manual files, shared installation interlock and live reload; no general-grammar or readiness-estimate claim |
 | 2026-10-20 | minor | Desktop French dictionary button: explicit verified download, atomic installation, live activation and saved folder; existing dictionaries preserved; no startup network access |
 | 2026-10-18 | trivial | M6: Manage Sources imports Word's `Sources.xml` (#2640) |
