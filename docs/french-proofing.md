@@ -1,6 +1,17 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French negative/adverb participle contexts; baseline #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660)
+
+## Shared-engine compatibility and reproducible CI
+
+The [historical affix compatibility gate](affix-compatibility.md) compares seven
+original non-French fixtures against actual upstream e6c5a70 outputs and old
+WCAFF1 bytes. The full proofing suite includes these tests. The French workflow
+pins both its action revision and Rust 1.98.1, prints the compiler version, and
+runs `cargo fmt --all -- --check` on Linux, Windows and macOS. Real dictionary
+inputs retain their revision and byte checksums. Changes to
+`assets/hyphenation/fr.pat` trigger this workflow on pull requests and main pushes,
+including changes to that pattern file alone.
 
 ## Baseline for review
 
@@ -20,6 +31,10 @@ The baseline includes spelling, accent and apostrophe suggestions, conservative 
 and grammar, and hyphenation. `fr-CA` shares spelling and uses Quebec punctuation conventions.
 New documents under the French interface take the French system region. Missing and unreadable
 dictionaries are reported through the existing status-bar and Options diagnostics.
+
+Document proofing reads the Canadian region only in its region position, after an optional
+script (`fr-CA`, `fr-Latn-CA`). Extension data such as `fr-u-ca-gregory` and `fr-x-ca`
+does not select Quebec typography.
 
 General subject–verb agreement, gender/number agreement and contextual homophones are not
 checked. Conjugation coverage is limited to the first cases below. No automatic document-wide
@@ -228,6 +243,11 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-20 | minor | Attached Unicode marks keep their original spelling ranges; French compound fallback rejects empty internal components while preserving explicit dictionary entries |
+| 2026-10-20 | minor | French proofing reads Canada only from the region after the language/optional script; Unicode calendar and private-use extension subtags do not select Quebec typography; production-parser regressions |
+| 2026-10-20 | minor | French dictionary replacement clears stale load errors only after successful parsing; Canadian French keeps its own Options label |
+| 2026-10-20 | trivial | French hyphenation pattern asset included in both workflow path filters so pattern-only changes run the proofing regressions |
+| 2026-10-20 | minor | Frozen pre-French affix outputs and legacy compact dictionaries agree; French CI pins Rust 1.98.1 and checks formatting on all three desktop systems |
 | 2026-10-20 | minor | French participles through explicit negation and 19 common adverbs; three-word bound, idiom/clitic guards, exact-range stable corrections and expanded real-data/prose checks |
 | 2026-10-20 | minor | French irregular participles: five avoir tenses, 66 original fallback pairs, bounded optional lexical coverage and separate prose smoke gate; no general agreement claim |
 | 2026-10-20 | minor | Explicit desktop French verb-form data installation: pinned MPL-2.0 archive, bounded ZIP members, atomic activation, retained manual files, shared installation interlock and live reload; no general-grammar or readiness-estimate claim |
@@ -235,3 +255,32 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 | 2026-10-20 | minor | Bounded avoir + first-group participle suggestions, si il/ils elision, original error/quiet/unsupported regressions and command-level apply/undo tests |
 | 2026-10-20 | minor | Explicit desktop download button, verified atomic installation, live activation and saved folder; existing dictionaries retained |
 | 2026-10-20 | major | Integration checklist, explicit real-dictionary gate, feedback format and staged French follow-ups |
+
+A successful call to the public French dictionary installation API clears an earlier
+load diagnostic; an invalid replacement preserves the current dictionary and diagnostic.
+The regression exercises unreadable disk data, a failed replacement, a valid replacement
+and a second failed replacement. Options labels keep France and Canada distinct.
+
+## Combining marks and French compound boundaries
+
+The proofing tokenizer keeps a Unicode Mark attached to its preceding letter or
+continuing mark sequence. It does not attach an orphan mark after punctuation or
+digits. This avoids splitting a decomposed spelling such as `e` + U+0301 + `cole`
+before the dictionary can apply its existing input conversions. The original
+UTF-8 text and issue offsets are retained; the document is not normalized or
+rewritten. See [Unicode canonical equivalence](https://unicode.org/reports/tr15/#Canonical_And_Compatibility_Equivalence).
+
+French punctuation trimming also retains a final attached mark, as in `cafe` +
+U+0301. Recognition still depends on the installed dictionary and its input
+conversions; this change does not add a general normalization engine.
+
+The French compound fallback requires every internal hyphen-separated component
+to be nonempty. `porte--monnaie` and `va--t-il` can therefore be reported instead
+of bypassing spelling checks. Existing valid compounds and inversions remain
+accepted. Explicit full-word dictionary entries and user-dictionary choices are
+checked before this fallback and retain priority.
+
+Process-isolated synthetic regressions cover original byte ranges, both French
+regions, orphan marks, another dictionary-backed language and explicit user
+entries. The existing required real French dictionary gate covers both forms of
+accented words and malformed versus valid compounds with pinned Dicollecte data.
