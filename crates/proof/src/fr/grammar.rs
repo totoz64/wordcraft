@@ -474,11 +474,28 @@ pub(crate) fn is_personal_subject_issue(issue: &Issue) -> bool {
     matches!(issue.message.as_str(), super::subject_agreement::MESSAGE | super::subject_agreement::AUXILIARY_MESSAGE)
 }
 
-/// Context required for a personal-subject suggestion, independently of the
-/// smaller range it replaces. Auxiliary choice also depends on the participle.
+/// These initial-subject rules depend on words outside their replacement range.
+pub(crate) fn requires_syntactic_context(issue: &Issue) -> bool {
+    is_personal_subject_issue(issue)
+        || issue.message == "Accord du verbe avec l’antécédent de qui"
+        || issue.message.starts_with("Participe passé attendu après avoir")
+}
+
+/// Context required for an initial-subject suggestion, independently of the
+/// smaller range it replaces. Auxiliary choice also depends on the later participle.
 pub(crate) fn required_context_range(text: &str, issue: &Issue) -> Option<std::ops::Range<usize>> {
     if issue.message == super::subject_agreement::AUXILIARY_MESSAGE {
         super::subject_agreement::auxiliary_context_range(text)
+    } else if issue.message.starts_with("Participe passé attendu après avoir") {
+        super::conjugation::required_context_range(text, issue)
+    } else if requires_syntactic_context(issue) {
+        let &(start, _) = words(text).first()?;
+        if start > issue.start {
+            return None;
+        }
+        text.get(issue.start..issue.end)?;
+        text.get(start..issue.end)?;
+        Some(start..issue.end)
     } else {
         text.get(issue.start..issue.end)?;
         Some(issue.start..issue.end)

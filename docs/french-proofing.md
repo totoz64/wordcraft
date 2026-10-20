@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660); previously minor (French personal-subject agreement; baseline #1660); previously trivial (preserve explicit written-pronoun examples); previously trivial (French suggestion priority after language filtering); previously minor (French reflexive auxiliary correction); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (bounded French grammar deciding-language context); previously minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660); previously minor (French personal-subject agreement; baseline #1660); previously trivial (preserve explicit written-pronoun examples); previously trivial (French suggestion priority after language filtering); previously minor (French reflexive auxiliary correction); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
 
 ## Shared-engine compatibility and reproducible CI
 
@@ -334,6 +334,7 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-20 | minor | Require one French-region deciding context for existing personal-subject, personal-cleft and avoir suggestions; retain unrelated foreign tails, original UTF-8 ranges and independent spelling/elision precedence; no general-grammar claim |
 | 2026-10-20 | minor | Attached Unicode marks keep their original spelling ranges; French compound fallback rejects empty internal components while preserving explicit dictionary entries |
 | 2026-10-20 | minor | French proofing reads Canada only from the region after the language/optional script; Unicode calendar and private-use extension subtags do not select Quebec typography; production-parser regressions |
 | 2026-10-20 | trivial | Explicit written-pronoun contexts retain their text: third-person copulas with pronoun labels or typographic cues no longer receive personal agreement or apostrophe corrections; ordinary prose remains checked |
@@ -445,3 +446,26 @@ This is not a general interpretation of unquoted autonyms, literary grammar,
 formatting or user intent. The text-only proofing API does not see italics/bold.
 Self-contained synthetic and pinned real-data regressions cover both French
 regions, ordinary-error controls and spelling-only behavior.
+
+## French grammar across language runs
+
+Existing paragraph-initial personal-subject agreement, personal-cleft agreement
+and avoir + infinitive/participle suggestions require the words actually used to
+decide the correction to belong to one French region (`fr-FR` or `fr-CA`). A
+foreign or other-region subject, cleft antecedent, auxiliary, required modal
+complement or deciding object cue cannot determine a French suggestion. An
+unrelated following object does not disable an otherwise unambiguous recorded
+participle suggestion.
+
+The original UTF-8 text, issue positions and smaller replacement spans are kept.
+Context validation precedes the existing suppression of overlapping spelling
+guesses or conflicting elision; rejecting the grammatical suggestion retains
+independent spelling and elision. The grammar-mark option and explicit Review/F7
+behavior are unchanged. These remain incomplete, bounded rules, without a new
+grammatical family, general multilingual parser or document normalization.
+
+Self-contained cases live in `french_mixed_context.rs` and
+`french_mixed_cleft_context.rs` under `crates/proof/tests`. The French workflow
+also requires the pinned-data `french_mixed_context_real` gate and the engine
+`fr_mixed_context` Review test. These test requirements do not establish native,
+remote or release readiness; those results must identify their actual source.
