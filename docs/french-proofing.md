@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660); previously minor (French personal-subject agreement; baseline #1660); previously trivial (French suggestion priority after language filtering); previously minor (French reflexive auxiliary correction); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660); previously minor (French personal-subject agreement; baseline #1660); previously trivial (preserve explicit written-pronoun examples); previously trivial (French suggestion priority after language filtering); previously minor (French reflexive auxiliary correction); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
 
 ## Shared-engine compatibility and reproducible CI
 
@@ -336,6 +336,7 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 |---|---|---|
 | 2026-10-20 | minor | Attached Unicode marks keep their original spelling ranges; French compound fallback rejects empty internal components while preserving explicit dictionary entries |
 | 2026-10-20 | minor | French proofing reads Canada only from the region after the language/optional script; Unicode calendar and private-use extension subtags do not select Quebec typography; production-parser regressions |
+| 2026-10-20 | trivial | Explicit written-pronoun contexts retain their text: third-person copulas with pronoun labels or typographic cues no longer receive personal agreement or apostrophe corrections; ordinary prose remains checked |
 | 2026-10-20 | trivial | French elision conflicts are resolved only after grammatical context passes exact-language filtering; a rejected reflexive auxiliary retains independent spelling and typography |
 | 2026-10-20 | minor | French reflexive auxiliary correction with recorded participles, bounded clitics/negation, exact-language context and retained participle endings; no general participle agreement |
 | 2026-10-20 | minor | French dictionary replacement clears stale load errors only after successful parsing; Canadian French keeps its own Options label |
@@ -422,3 +423,25 @@ correct objects, unsupported errors, mixed-language contexts and spelling priori
 Command-level tests cover F7/Change, grammar-mark options, separate Undo and an ASCII
 prefix expansion before a colon whose UTF-8 range must be recomputed. Real-data and
 external-prose results are reported separately from these synthetic regressions.
+
+## Explicit references to written personal pronouns
+
+`Je est un pronom personnel` and `Nous est écrit en gras sur cette affiche`
+describe the written word, which has third-person singular agreement. The
+[OQLF description of autonyms](https://vitrinelinguistique.oqlf.gouv.qc.ca/24379/la-typographie/mise-en-relief/italique/emploi-de-litalique-pour-les-autonymes-et-les-mots-de-registres-differents)
+allows typographic emphasis instead of quotation marks; its
+[determiner guidance](https://vitrinelinguistique.oqlf.gouv.qc.ca/24686/la-grammaire/les-determinants/determinants-definis/determinant-defini-devant-un-autonyme)
+also describes direct autonymous use.
+
+A bounded guard recognizes an initial written personal pronoun, a third-person
+singular copula (including avoir + été), and an immediate predicative pronoun label or nearby
+`en gras`, `en italique(s)`, `en majuscules` or `en minuscules` cue. In that
+clause without intervening comma or sentence punctuation, initial conjugation/agreement and elision suggestions are withheld.
+Spelling and punctuation checks remain available. Ordinary `Je est responsable`
+still proposes `Je suis responsable`, and a formatting cue alone cannot disable
+an ordinary non-copular personal agreement correction.
+
+This is not a general interpretation of unquoted autonyms, literary grammar,
+formatting or user intent. The text-only proofing API does not see italics/bold.
+Self-contained synthetic and pinned real-data regressions cover both French
+regions, ordinary-error controls and spelling-only behavior.
