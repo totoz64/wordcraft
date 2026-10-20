@@ -1,8 +1,9 @@
 //! Bounded subject + avoir + infinitive checks, with original fallback facts and optional data.
 //!
-//! At the start of a paragraph, a subject immediately followed by correctly matched `avoir`
-//! needs a participle: `J'avais écrire` → `J'avais écrit`. Five simple auxiliary tenses are
-//! supported. More infinitives/participles come from the optional MPL-2.0 lexicon.
+//! At the start of a paragraph, correctly matched `avoir` can need a participle:
+//! `J'avais écrire` → `J'avais écrit`, also with explicit negation and up to three known
+//! intervening words. Five simple auxiliary tenses are supported. More recorded forms
+//! come from the optional MPL-2.0 lexicon.
 //! No inference from an arbitrary `-er` ending, no agreement or auxiliary-choice guess,
 //! no object clitics, no correction inside a quotation or a metalinguistic example.
 
@@ -84,6 +85,31 @@ fn horizontal(gap: &str) -> bool {
     !gap.is_empty() && gap.chars().all(|c| matches!(c, ' ' | '\u{a0}' | '\u{202f}'))
 }
 
+fn adverb(word: &str) -> bool {
+    matches!(
+        word,
+        "aussi"
+            | "assez"
+            | "beaucoup"
+            | "bien"
+            | "bientôt"
+            | "déjà"
+            | "encore"
+            | "finalement"
+            | "mal"
+            | "mieux"
+            | "peu"
+            | "presque"
+            | "probablement"
+            | "rarement"
+            | "seulement"
+            | "souvent"
+            | "toujours"
+            | "trop"
+            | "vraiment"
+    )
+}
+
 pub(super) fn check(text: &str, ws: &[(usize, usize)], issues: &mut Vec<Issue>) {
     let Some(&(a, b)) = ws.first() else { return };
     let (Some(before), Some(first)) = (text.get(..a), text.get(a..b)) else { return };
@@ -93,8 +119,8 @@ pub(super) fn check(text: &str, ws: &[(usize, usize)], issues: &mut Vec<Issue>) 
         return;
     }
     let lower = first.to_lowercase().replace('’', "'");
-    let (verb_index, subject, impersonal_il) = if matches!(lower.as_str(), "j'ai" | "j'avais" | "j'aurai" | "j'aurais" | "j'eus") {
-        (1, Person::FirstSingular, false)
+    let (mut verb_index, subject, impersonal_il, negated) = if matches!(lower.as_str(), "j'ai" | "j'avais" | "j'aurai" | "j'aurais" | "j'eus") {
+        (1, Person::FirstSingular, false, false)
     } else {
         let (person, auxiliaries) = match lower.as_str() {
             "je" => (Person::FirstSingular, ["ai", "avais", "aurai", "aurais", "eus"]),
@@ -106,11 +132,53 @@ pub(super) fn check(text: &str, ws: &[(usize, usize)], issues: &mut Vec<Issue>) 
             _ => return,
         };
         let Some(&(c, d)) = ws.get(1) else { return };
-        if !text.get(c..d).is_some_and(|aux| auxiliaries.contains(&aux)) || !text.get(b..c).is_some_and(horizontal) {
+        let Some(auxiliary) = text.get(c..d).filter(|aux| aux.len() <= 16) else { return };
+        let auxiliary = auxiliary.replace('’', "'");
+        let negated = auxiliary.starts_with("n'");
+        let auxiliary = auxiliary.strip_prefix("n'").unwrap_or(&auxiliary);
+        if !auxiliaries.contains(&auxiliary) || !text.get(b..c).is_some_and(horizontal) {
             return;
         }
-        (2, person, lower == "il")
+        (2, person, lower == "il", negated)
     };
+    // Only a short explicit list can intervene. Never skip a participle, object clitic,
+    // `beau` (avoir beau + infinitive), `à` or restrictive `que`. A negative auxiliary
+    // additionally needs one explicit negative adverb, not an arbitrary `ne` reading.
+    let mut negative_seen = !negated;
+    let mut negative_marker = None;
+    let bridge_start = verb_index;
+    for _ in 0..3 {
+        let (Some(&(start, end)), Some(&(_, previous_end))) = (ws.get(verb_index), ws.get(verb_index - 1)) else { return };
+        let Some(word) = text.get(start..end).filter(|w| w.len() <= 128) else { return };
+        if !text.get(previous_end..start).is_some_and(horizontal) {
+            return;
+        }
+        let consumed = if negated && !negative_seen && matches!(word, "pas" | "plus" | "jamais" | "guère" | "point") {
+            negative_seen = true;
+            negative_marker = Some(word);
+            1
+        } else if negated && matches!((negative_marker, word), (Some("plus"), "jamais") | (Some("jamais" | "pas" | "guère"), "plus")) {
+            negative_marker = Some("combined");
+            1
+        } else if negative_marker == Some("pas")
+            && word == "du"
+            && ws.get(verb_index + 1).is_some_and(|&(a, b)| text.get(end..a).is_some_and(horizontal) && text.get(a..b) == Some("tout"))
+        {
+            negative_marker = Some("du tout");
+            2
+        } else if !adverb(word) {
+            break;
+        } else {
+            1
+        };
+        if verb_index.saturating_sub(bridge_start).saturating_add(consumed) > 3 {
+            return;
+        }
+        verb_index += consumed;
+    }
+    if !negative_seen {
+        return;
+    }
     let (Some(&(start, end)), Some(&(_, previous_end))) = (ws.get(verb_index), ws.get(verb_index - 1)) else { return };
     let Some(word) = text.get(start..end) else { return };
     if word.len() > 128 || !word.chars().all(char::is_lowercase) {

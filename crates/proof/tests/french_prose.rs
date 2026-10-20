@@ -25,7 +25,7 @@ fn auxiliary_beginning(text: &str) -> bool {
         "ils" | "elles" => ["ont", "avaient", "auront", "auraient", "eurent"],
         _ => return false,
     };
-    words.next().is_some_and(|word| auxiliaries.contains(&word))
+    words.next().is_some_and(|word| auxiliaries.contains(&word.strip_prefix("n'").unwrap_or(word)))
 }
 
 #[test]

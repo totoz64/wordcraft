@@ -99,14 +99,16 @@ fn real_lexicon_preserves_persons_tenses_and_ambiguous_readings() {
             covered += 1;
             assert!(!forms.is_empty());
             let tail = if matches!(infinitive.as_str(), "pouvoir" | "devoir") { " partir." } else { "." };
-            let text = format!("J’ai {infinitive}{tail}");
-            let issues = grammar::check(&text);
-            assert_eq!(issues.len(), 1, "whole grammar path: {text}: {issues:?}");
-            assert_eq!(&text[issues[0].start..issues[0].end], infinitive);
-            assert!(issues[0].suggestions.iter().all(|s| lexicon.is_past_participle(s)), "{text}: {issues:?}");
-            for suggestion in &issues[0].suggestions {
-                let fixed = format!("{}{suggestion}{}", &text[..issues[0].start], &text[issues[0].end..]);
-                assert!(grammar::check(&fixed).is_empty(), "stable grammar path: {fixed}");
+            for prefix in ["J’ai", "Je n’avais pas", "J’aurais déjà"] {
+                let text = format!("{prefix} {infinitive}{tail}");
+                let issues = grammar::check(&text);
+                assert_eq!(issues.len(), 1, "whole grammar path: {text}: {issues:?}");
+                assert_eq!(&text[issues[0].start..issues[0].end], infinitive);
+                assert!(issues[0].suggestions.iter().all(|s| lexicon.is_past_participle(s)), "{text}: {issues:?}");
+                for suggestion in &issues[0].suggestions {
+                    let fixed = format!("{}{suggestion}{}", &text[..issues[0].start], &text[issues[0].end..]);
+                    assert!(grammar::check(&fixed).is_empty(), "stable grammar path: {fixed}");
+                }
             }
             for form in forms {
                 assert!(lexicon.is_past_participle(&form), "{infinitive} → {form}");
@@ -114,7 +116,9 @@ fn real_lexicon_preserves_persons_tenses_and_ambiguous_readings() {
             }
         }
     }
-    eprintln!("{covered} simple infinitives have a supported avoir/first-singular participle reading without an object cue");
+    eprintln!(
+        "{covered} simple infinitives have a supported avoir/first-singular participle reading without an object cue; each passes the whole grammar path and stable correction in three positive/negative/adverb contexts"
+    );
     assert!(covered > 4_000, "exercise broad real lexical coverage, not a tiny table");
     for lang in [ProofLang::Fr, ProofLang::FrCa] {
         for (text, wrong, right) in [
