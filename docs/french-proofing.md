@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660); previously minor (French personal-subject agreement; baseline #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660); previously minor (French personal-subject agreement; baseline #1660); previously trivial (French suggestion priority after language filtering); previously minor (French reflexive auxiliary correction); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
 
 ## Shared-engine compatibility and reproducible CI
 
@@ -142,7 +142,8 @@ existing unknown-h policy is retained when an elision decision needs pronunciati
 Se must match a third-person subject. Reflexive clitics are recognized by their person;
 a person-only correction of avoir in that construction is declined, since
 [pronominal compound verbs require être](https://vitrinelinguistique.oqlf.gouv.qc.ca/22939/la-grammaire/le-verbe/verbes-pronominaux/emploi-de-la-forme-pronominale).
-This increment does not select a new auxiliary or fix missing/wrong clitic persons.
+The following bounded extension selects être only with an independently recorded
+participle of a supported common pronominal lemma; missing/wrong clitic persons remain unsupported.
 Personal me/te/se/nous/vous/lui establish a finite context; determiner-like le/la/les/leur
 and en/y retain the nominal ambiguity guards. `Nous les guides de montagne…` and
 `Nous en juges impartiaux…` therefore remain quiet.
@@ -335,6 +336,8 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 |---|---|---|
 | 2026-10-20 | minor | Attached Unicode marks keep their original spelling ranges; French compound fallback rejects empty internal components while preserving explicit dictionary entries |
 | 2026-10-20 | minor | French proofing reads Canada only from the region after the language/optional script; Unicode calendar and private-use extension subtags do not select Quebec typography; production-parser regressions |
+| 2026-10-20 | trivial | French elision conflicts are resolved only after grammatical context passes exact-language filtering; a rejected reflexive auxiliary retains independent spelling and typography |
+| 2026-10-20 | minor | French reflexive auxiliary correction with recorded participles, bounded clitics/negation, exact-language context and retained participle endings; no general participle agreement |
 | 2026-10-20 | minor | French dictionary replacement clears stale load errors only after successful parsing; Canadian French keeps its own Options label |
 | 2026-10-20 | trivial | French hyphenation pattern asset included in both workflow path filters so pattern-only changes run the proofing regressions |
 | 2026-10-20 | minor | Frozen pre-French affix outputs and legacy compact dictionaries agree; French CI pins Rust 1.98.1 and checks formatting on all three desktop systems |
@@ -376,3 +379,46 @@ Process-isolated synthetic regressions cover original byte ranges, both French
 regions, orphan marks, another dictionary-backed language and explicit user
 entries. The existing required real French dictionary gate covers both forms of
 accented words and malformed versus valid compounds with pinned Dicollecte data.
+
+## Bounded reflexive auxiliary correction
+
+With optional recorded morphology, initial personal subjects now support `Je m’ai trompée`
+→ `Je me suis trompée`, `Nous nous avons parlé` → `Nous nous sommes parlé` and
+`Elle se les a offertes` → `Elle se les est offertes`. The rule follows the
+[OQLF description of pronominal verbs](https://vitrinelinguistique.oqlf.gouv.qc.ca/22939/la-grammaire/le-verbe/verbes-pronominaux/emploi-de-la-forme-pronominale):
+the reflected clitic has the subject’s person and compound pronominal verbs take être.
+Ordinary objects referring to someone else, such as `Nous vous avons écrit`, stay quiet.
+
+The same bounded ordered-clitic parser and at most three explicit negative/adverb words
+are used. A separate recorded-participle bit includes all written genders/numbers without
+changing the canonical participles used by the earlier avoir + infinitive rule. The exact
+written participle is retained: `parlé`, `écrit`, `rendu compte`, `fait entendre` and
+preposed-object forms are never given an invented agreement ending.
+
+Scope is deliberately limited to 35 original common-lemma choices: aider, apercevoir,
+appeler, arrêter, blesser, cacher, confier, coucher, demander, donner, écrire, enfuir,
+expliquer, faire, habiller, inscrire, laver, lever, mettre, occuper, offrir, parler,
+préparer, présenter, procurer, promener, rappeler, raser, regarder, rendre, réveiller,
+sentir, souvenir, taire and tromper. A written past participle must have only supported
+participle readings and a matching finite paradigm. All written avoir mood/tense readings
+must be mapped to recorded être forms for the subject. Unsupported/incomplete data,
+lost le/la gender on unelision, quotations/code and excessive prefixes remain undecided.
+This does not claim full French grammar or participle agreement.
+
+The whole deciding context, from subject through the participle, must belong to one
+French region. A foreign or other-region subject, negative word, adverb or participle
+therefore cannot determine the correction. Only the smaller replaced prefix suppresses
+overlapping spelling guesses; spelling on the unchanged participle remains visible.
+Spelling-only mode retains its own marks.
+A conflicting elision is suppressed only after the subject/auxiliary correction passes
+that language check. If a foreign or other-region participle rejects the auxiliary,
+the independent French elision and prefix spelling marks remain available. A small
+process-isolated synthetic regression runs without optional external data; the real
+lexicon gate checks the same precedence in both French regions.
+
+Original regressions exercise seven lexical mood/tense mappings, recorded participle
+genders/numbers, incomplete and ambiguous data, excessive word bounds, both regions,
+correct objects, unsupported errors, mixed-language contexts and spelling priority.
+Command-level tests cover F7/Change, grammar-mark options, separate Undo and an ASCII
+prefix expansion before a colon whose UTF-8 range must be recomputed. Real-data and
+external-prose results are reported separately from these synthetic regressions.

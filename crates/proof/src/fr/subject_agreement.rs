@@ -6,6 +6,7 @@ use super::{
 use crate::Issue;
 
 pub(super) const MESSAGE: &str = "Accord du verbe avec le pronom sujet";
+pub(super) const AUXILIARY_MESSAGE: &str = "Auxiliaire être avec un verbe pronominal";
 
 struct Candidate<'a> {
     start: usize,
@@ -273,12 +274,31 @@ fn known_elision(form: &str) -> Option<bool> {
 }
 
 fn check_candidate(text: &str, ws: &[(usize, usize)], lexicon: &Lexicon, candidate: Candidate<'_>) -> Option<Issue> {
-    let forms = lexicon.agreement_forms(candidate.form, candidate.target)?;
-    // Reflexive compound verbs require être, so a person-only avoir change could
-    // introduce an invalid m’ai/s’a etc. Auxiliary choice is a separate rule.
-    if candidate.clitics.iter().any(|c| c.reflexive(candidate.target)) && lexicon.has_finite_lemma(candidate.form, "avoir") {
-        return None;
-    }
+    let (forms, message) = if candidate.clitics.iter().any(|c| c.reflexive(candidate.target)) && lexicon.has_finite_lemma(candidate.form, "avoir") {
+        if !super::conjugation::is_prose(text) {
+            return None;
+        }
+        let index = super::conjugation::participle_index(text, ws, candidate.next, candidate.negative)?;
+        let &(start, end) = ws.get(index)?;
+        let participle = text.get(start..end).filter(|word| word.len() <= 128 && word.chars().all(char::is_lowercase))?;
+        let &(_, previous_end) = ws.get(index.checked_sub(1)?)?;
+        if !horizontal(text.get(previous_end..start)?)
+            || ws.iter().skip(index.saturating_add(1)).take(8).any(|&(a, b)| {
+                text.get(a..b).is_some_and(|word| {
+                    word.len() <= 32
+                        && matches!(
+                            word.to_lowercase().as_str(),
+                            "mot" | "mots" | "verbe" | "verbes" | "infinitif" | "infinitifs" | "forme" | "formes" | "exemple" | "exemples"
+                        )
+                })
+            })
+        {
+            return None;
+        }
+        (lexicon.reflexive_auxiliary_forms(candidate.form, participle, candidate.target)?, AUXILIARY_MESSAGE)
+    } else {
+        (lexicon.agreement_forms(candidate.form, candidate.target)?, MESSAGE)
+    };
     if !candidate.negative
         && matches!(candidate.target, Person::FirstPlural | Person::SecondPlural | Person::ThirdPlural)
         && lexicon.has_nonverbal_reading(candidate.form)
@@ -346,12 +366,24 @@ fn check_candidate(text: &str, ws: &[(usize, usize)], lexicon: &Lexicon, candida
     } else {
         forms
     };
-    Some(grammar::issue(start, candidate.end, MESSAGE.into(), suggestions))
+    Some(grammar::issue(start, candidate.end, message.into(), suggestions))
 }
 
 pub(super) fn check(text: &str, ws: &[(usize, usize)]) -> Option<Issue> {
     let parsed = candidate(text, ws)?; // Avoid optional-data loading for unrelated paragraphs.
     check_candidate(text, ws, &super::morphology::lexicon(), parsed)
+}
+
+/// The auxiliary decision uses the subject, clitic chain, bridge and participle.
+/// All of them must belong to the same French region, even though only the prefix
+/// is replaced. Reparse without loading data; a malformed context stays undecided.
+pub(super) fn auxiliary_context_range(text: &str) -> Option<std::ops::Range<usize>> {
+    let ws = crate::words(text);
+    let candidate = candidate(text, &ws)?;
+    let index = super::conjugation::participle_index(text, &ws, candidate.next, candidate.negative)?;
+    let &(_, end) = ws.get(index)?;
+    text.get(candidate.subject_start..end)?;
+    Some(candidate.subject_start..end)
 }
 
 #[cfg(test)]

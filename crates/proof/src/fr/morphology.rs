@@ -23,9 +23,50 @@ const MAX_FORM_RECORDS: usize = 64;
 const MAX_WORD_BYTES: usize = 128;
 const INFINITIVE: u8 = 1;
 const PARTICIPLE: u8 = 2;
+const ANY_PARTICIPLE: u8 = 4;
 const AVOIR: u8 = 1;
 const AVOIR_WITH_OBJECT: u8 = 2;
 const IMPERSONAL: u8 = 4;
+
+// Original common-verb scope for compound reflexives. A pronominal tag alone also
+// covers restricted constructions; do not infer compound availability from it.
+const REFLEXIVE_LEMMAS: &[&str] = &[
+    "aider",
+    "apercevoir",
+    "appeler",
+    "arrêter",
+    "blesser",
+    "cacher",
+    "confier",
+    "coucher",
+    "demander",
+    "donner",
+    "écrire",
+    "enfuir",
+    "expliquer",
+    "faire",
+    "habiller",
+    "inscrire",
+    "laver",
+    "lever",
+    "mettre",
+    "occuper",
+    "offrir",
+    "parler",
+    "préparer",
+    "présenter",
+    "procurer",
+    "promener",
+    "rappeler",
+    "raser",
+    "regarder",
+    "rendre",
+    "réveiller",
+    "sentir",
+    "souvenir",
+    "taire",
+    "tromper",
+];
 
 /// Grammatical person and number. Polite singular `vous` still takes SecondPlural.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -124,8 +165,9 @@ impl Lexicon {
     }
 
     /// Parse the public 20-column TSV. Reads, rows, fields and index fan-out are bounded.
-    /// Retains finite readings and canonical (masculine singular/invariable) participles,
-    /// with infinitive/auxiliary annotations. Nonverbal homographs are retained separately
+    /// Retains finite readings, infinitive/auxiliary annotations and recorded participles.
+    /// Canonical (masculine singular/invariable) participles keep a separate bit so the
+    /// avoir+infinitive rule retains its narrower scope. Nonverbal homographs are retained separately
     /// as ambiguity facts, never as verb/person/tense readings.
     pub fn from_reader(input: impl Read) -> Result<Self, String> {
         let mut input = BufReader::new(input);
@@ -201,7 +243,8 @@ impl Lexicon {
             }
             let finite = tenses != 0 && persons != 0;
             let nonfinite = if infinitive { INFINITIVE } else { 0 }
-                | if participle && ((masculine && (singular || invariant)) || (epicene && invariant)) { PARTICIPLE } else { 0 };
+                | if participle && ((masculine && (singular || invariant)) || (epicene && invariant)) { PARTICIPLE } else { 0 }
+                | if participle { ANY_PARTICIPLE } else { 0 };
             if !finite && nonfinite == 0 {
                 continue;
             }
@@ -380,6 +423,61 @@ impl Lexicon {
         form.len() <= MAX_WORD_BYTES && self.analyses(form).iter().any(|r| r.nonfinite & INFINITIVE != 0)
     }
 
+    /// A recorded participle of a common compound-reflexive verb permits changing
+    /// finite avoir to être, retaining the written participle and the auxiliary's mood/tense.
+    /// Missing data, unsupported participle readings and incomplete paradigms stay undecided.
+    pub(super) fn reflexive_auxiliary_forms(&self, form: &str, participle: &str, target: Person) -> Option<Vec<String>> {
+        if form.len() > MAX_WORD_BYTES || participle.len() > MAX_WORD_BYTES {
+            return None;
+        }
+        let lemma_name = |id| usize::try_from(id).ok().and_then(|i| self.lemmas.get(i)).map(String::as_str);
+        let mut tenses = 0u8;
+        for record in self.analyses(form).iter().filter(|r| r.tenses != 0) {
+            if lemma_name(record.lemma) != Some("avoir") {
+                return None;
+            }
+            tenses |= record.tenses;
+        }
+        if tenses == 0 {
+            return None;
+        }
+        let mut found_participle = false;
+        for record in self.analyses(participle).iter().filter(|r| r.nonfinite & ANY_PARTICIPLE != 0) {
+            found_participle = true;
+            if !lemma_name(record.lemma).is_some_and(|lemma| REFLEXIVE_LEMMAS.contains(&lemma)) {
+                return None;
+            }
+            let start = self.by_lemma.partition_point(|(lemma, _)| *lemma < record.lemma);
+            let end = self.by_lemma.partition_point(|(lemma, _)| *lemma <= record.lemma);
+            let covered = self.by_lemma.get(start..end).unwrap_or_default().iter().fold(0, |covered, (_, index)| {
+                covered | self.records.get(*index).filter(|r| r.persons & target.bit() != 0).map_or(0, |r| r.tenses & tenses)
+            });
+            if covered != tenses {
+                return None;
+            }
+        }
+        if !found_participle {
+            return None;
+        }
+        let etre = self.lemmas.iter().position(|lemma| lemma == "être").and_then(|id| u32::try_from(id).ok())?;
+        let start = self.by_lemma.partition_point(|(lemma, _)| *lemma < etre);
+        let end = self.by_lemma.partition_point(|(lemma, _)| *lemma <= etre);
+        let mut covered = 0u8;
+        let mut forms = Vec::new();
+        for (_, index) in self.by_lemma.get(start..end).unwrap_or_default() {
+            if let Some(record) = self.records.get(*index)
+                && record.persons & target.bit() != 0
+                && record.tenses & tenses != 0
+            {
+                covered |= record.tenses & tenses;
+                forms.push(record.form.as_str());
+            }
+        }
+        forms.sort_unstable();
+        forms.dedup();
+        if covered != tenses || forms.is_empty() || forms.len() > 8 { None } else { Some(forms.into_iter().map(str::to_owned).collect()) }
+    }
+
     /// Known infinitive → masculine-singular/invariable participles, after an already matched
     /// subject + avoir. `impersonal_il` means the actual subject is `il`, not merely any third
     /// singular pronoun. Mixed/unspecified transitive constructions require `direct_object`.
@@ -500,6 +598,79 @@ mod tests {
             out.push_str(&format!("{index}\t0\t{form}\t{lemma}\t{tags}{}\n", "\t".repeat(15)));
         }
         out
+    }
+
+    fn reflexive_rows() -> Vec<(&'static str, &'static str, &'static str)> {
+        vec![
+            ("ai", "avoir", "v0ait____a ipre 1sg"),
+            ("avais", "avoir", "v0ait____a iimp 1sg 2sg"),
+            ("eus", "avoir", "v0ait____a ipsi 1sg 2sg"),
+            ("aurai", "avoir", "v0ait____a ifut 1sg"),
+            ("aurais", "avoir", "v0ait____a cond 1sg 2sg"),
+            ("aie", "avoir", "v0ait____a spre 1sg"),
+            ("eusse", "avoir", "v0ait____a simp 1sg"),
+            ("suis", "être", "v0ei_____a ipre 1sg"),
+            ("étais", "être", "v0ei_____a iimp 1sg 2sg"),
+            ("fus", "être", "v0ei_____a ipsi 1sg 2sg"),
+            ("serai", "être", "v0ei_____a ifut 1sg"),
+            ("serais", "être", "v0ei_____a cond 1sg 2sg"),
+            ("sois", "être", "v0ei_____a spre 1sg"),
+            ("fusse", "être", "v0ei_____a simp 1sg"),
+            ("trompe", "tromper", "v1_it_q__a ipre spre 1sg"),
+            ("trompais", "tromper", "v1_it_q__a iimp 1sg"),
+            ("trompai", "tromper", "v1_it_q__a ipsi 1sg"),
+            ("tromperai", "tromper", "v1_it_q__a ifut 1sg"),
+            ("tromperais", "tromper", "v1_it_q__a cond 1sg"),
+            ("trompasse", "tromper", "v1_it_q__a simp 1sg"),
+            ("trompé", "tromper", "v1_it_q__a ppas adj mas sg"),
+            ("trompée", "tromper", "v1_it_q__a ppas adj fem sg"),
+            ("trompés", "tromper", "v1_it_q__a ppas adj mas pl"),
+            ("trompées", "tromper", "v1_it_q__a ppas adj fem pl"),
+        ]
+    }
+
+    #[test]
+    fn reflexive_auxiliaries_follow_the_written_tense_and_all_recorded_participles() {
+        let lexicon = Lexicon::from_reader(table(&reflexive_rows()).as_bytes()).unwrap();
+        assert_eq!(lexicon.len(), 20, "participle readings do not inflate the finite count");
+        for (avoir, etre) in
+            [("ai", "suis"), ("avais", "étais"), ("eus", "fus"), ("aurai", "serai"), ("aurais", "serais"), ("aie", "sois"), ("eusse", "fusse")]
+        {
+            for participle in ["trompé", "trompée", "trompés", "trompées"] {
+                assert_eq!(lexicon.reflexive_auxiliary_forms(avoir, participle, Person::FirstSingular), Some(vec![etre.into()]));
+            }
+        }
+        assert!(lexicon.is_past_participle("trompé"));
+        assert!(!lexicon.is_past_participle("trompée"), "the older avoir+infinitive rule still requests only canonical forms");
+        assert!(lexicon.reflexive_auxiliary_forms("suis", "trompée", Person::FirstSingular).is_none());
+        assert!(lexicon.reflexive_auxiliary_forms("ai", "inconnue", Person::FirstSingular).is_none());
+    }
+
+    #[test]
+    fn reflexive_auxiliaries_decline_incomplete_and_unsupported_readings() {
+        let mut rows = reflexive_rows();
+        rows.retain(|(form, lemma, _)| !(*lemma == "être" && *form == "suis"));
+        let incomplete = Lexicon::from_reader(table(&rows).as_bytes()).unwrap();
+        assert!(incomplete.reflexive_auxiliary_forms("ai", "trompée", Person::FirstSingular).is_none());
+        let mut rows = reflexive_rows();
+        rows.retain(|(_, lemma, tags)| !(*lemma == "tromper" && !tags.split_whitespace().any(|tag| tag == "ppas")));
+        let incomplete = Lexicon::from_reader(table(&rows).as_bytes()).unwrap();
+        assert!(incomplete.reflexive_auxiliary_forms("ai", "trompée", Person::FirstSingular).is_none());
+        let mut rows = reflexive_rows();
+        rows.push(("ai", "fictional-homograph", "v1 ipre 1sg"));
+        let ambiguous = Lexicon::from_reader(table(&rows).as_bytes()).unwrap();
+        assert!(ambiguous.reflexive_auxiliary_forms("ai", "trompée", Person::FirstSingular).is_none());
+        let mut rows = reflexive_rows();
+        rows.extend([("mort", "mourir", "v3_i__q_e_ ppas mas sg"), ("mourais", "mourir", "v3_i__q_e_ iimp 1sg")]);
+        let lexicon = Lexicon::from_reader(table(&rows).as_bytes()).unwrap();
+        assert!(lexicon.has_person_reading("mourais", Person::FirstSingular), "the unsupported lemma has a complete relevant paradigm");
+        assert!(lexicon.reflexive_auxiliary_forms("avais", "mort", Person::FirstSingular).is_none());
+        assert!(lexicon.reflexive_auxiliary_forms(&"x".repeat(129), "trompée", Person::FirstSingular).is_none());
+        assert!(lexicon.reflexive_auxiliary_forms("ai", &"x".repeat(129), Person::FirstSingular).is_none());
+        let mut rows = reflexive_rows();
+        rows.extend([("trompée", "unsupported-homograph", "v1 ppas fem sg"), ("homographe", "unsupported-homograph", "v1 ipre 1sg")]);
+        let ambiguous = Lexicon::from_reader(table(&rows).as_bytes()).unwrap();
+        assert!(ambiguous.reflexive_auxiliary_forms("ai", "trompée", Person::FirstSingular).is_none(), "every participle reading must be supported");
     }
 
     #[test]

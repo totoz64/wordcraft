@@ -110,6 +110,50 @@ fn adverb(word: &str) -> bool {
     )
 }
 
+/// Candidate position after at most three known adverbs or an explicit negative sequence.
+pub(super) fn participle_index(text: &str, ws: &[(usize, usize)], mut verb_index: usize, negated: bool) -> Option<usize> {
+    let mut negative_seen = !negated;
+    let mut negative_marker = None;
+    let bridge_start = verb_index;
+    for _ in 0..3 {
+        let (Some(&(start, end)), Some(&(_, previous_end))) = (ws.get(verb_index), ws.get(verb_index.checked_sub(1)?)) else { return None };
+        let word = text.get(start..end).filter(|w| w.len() <= 128)?;
+        if !text.get(previous_end..start).is_some_and(horizontal) {
+            return None;
+        }
+        let consumed = if negated && !negative_seen && matches!(word, "pas" | "plus" | "jamais" | "guère" | "point") {
+            negative_seen = true;
+            negative_marker = Some(word);
+            1
+        } else if negated && matches!((negative_marker, word), (Some("plus"), "jamais") | (Some("jamais" | "pas" | "guère"), "plus")) {
+            negative_marker = Some("combined");
+            1
+        } else if negative_marker == Some("pas")
+            && word == "du"
+            && ws.get(verb_index.saturating_add(1)).is_some_and(|&(a, b)| text.get(end..a).is_some_and(horizontal) && text.get(a..b) == Some("tout"))
+        {
+            negative_marker = Some("du tout");
+            2
+        } else if !adverb(word) {
+            break;
+        } else {
+            1
+        };
+        if verb_index.saturating_sub(bridge_start).saturating_add(consumed) > 3 {
+            return None;
+        }
+        verb_index = verb_index.checked_add(consumed)?;
+    }
+    if !negative_seen {
+        return None;
+    }
+    Some(verb_index)
+}
+
+pub(super) fn is_prose(text: &str) -> bool {
+    !text.chars().any(|c| matches!(c, '"' | '«' | '»' | '“' | '”' | '`' | '<' | '>' | '=' | '@' | '\\' | '\t' | '\n' | '\r'))
+}
+
 pub(super) fn check(text: &str, ws: &[(usize, usize)], issues: &mut Vec<Issue>) {
     let Some(&(a, b)) = ws.first() else { return };
     let (Some(before), Some(first)) = (text.get(..a), text.get(a..b)) else { return };
@@ -119,7 +163,7 @@ pub(super) fn check(text: &str, ws: &[(usize, usize)], issues: &mut Vec<Issue>) 
         return;
     }
     let lower = first.to_lowercase().replace('’', "'");
-    let (mut verb_index, subject, impersonal_il, negated) = if matches!(lower.as_str(), "j'ai" | "j'avais" | "j'aurai" | "j'aurais" | "j'eus") {
+    let (verb_index, subject, impersonal_il, negated) = if matches!(lower.as_str(), "j'ai" | "j'avais" | "j'aurai" | "j'aurais" | "j'eus") {
         (1, Person::FirstSingular, false, false)
     } else {
         let (person, auxiliaries) = match lower.as_str() {
@@ -144,41 +188,7 @@ pub(super) fn check(text: &str, ws: &[(usize, usize)], issues: &mut Vec<Issue>) 
     // Only a short explicit list can intervene. Never skip a participle, object clitic,
     // `beau` (avoir beau + infinitive), `à` or restrictive `que`. A negative auxiliary
     // additionally needs one explicit negative adverb, not an arbitrary `ne` reading.
-    let mut negative_seen = !negated;
-    let mut negative_marker = None;
-    let bridge_start = verb_index;
-    for _ in 0..3 {
-        let (Some(&(start, end)), Some(&(_, previous_end))) = (ws.get(verb_index), ws.get(verb_index - 1)) else { return };
-        let Some(word) = text.get(start..end).filter(|w| w.len() <= 128) else { return };
-        if !text.get(previous_end..start).is_some_and(horizontal) {
-            return;
-        }
-        let consumed = if negated && !negative_seen && matches!(word, "pas" | "plus" | "jamais" | "guère" | "point") {
-            negative_seen = true;
-            negative_marker = Some(word);
-            1
-        } else if negated && matches!((negative_marker, word), (Some("plus"), "jamais") | (Some("jamais" | "pas" | "guère"), "plus")) {
-            negative_marker = Some("combined");
-            1
-        } else if negative_marker == Some("pas")
-            && word == "du"
-            && ws.get(verb_index + 1).is_some_and(|&(a, b)| text.get(end..a).is_some_and(horizontal) && text.get(a..b) == Some("tout"))
-        {
-            negative_marker = Some("du tout");
-            2
-        } else if !adverb(word) {
-            break;
-        } else {
-            1
-        };
-        if verb_index.saturating_sub(bridge_start).saturating_add(consumed) > 3 {
-            return;
-        }
-        verb_index += consumed;
-    }
-    if !negative_seen {
-        return;
-    }
+    let Some(verb_index) = participle_index(text, ws, verb_index, negated) else { return };
     let (Some(&(start, end)), Some(&(_, previous_end))) = (ws.get(verb_index), ws.get(verb_index - 1)) else { return };
     let Some(word) = text.get(start..end) else { return };
     if word.len() > 128 || !word.chars().all(char::is_lowercase) {
@@ -188,7 +198,7 @@ pub(super) fn check(text: &str, ws: &[(usize, usize)], issues: &mut Vec<Issue>) 
         return;
     }
     // Prose only. A quoted example, code fragment or table is too ambiguous for this first rule.
-    if text.chars().any(|c| matches!(c, '"' | '«' | '»' | '“' | '”' | '`' | '<' | '>' | '=' | '@' | '\\' | '\t' | '\n' | '\r')) {
+    if !is_prose(text) {
         return;
     }
     // `J'ai manger comme infinitif dans cet exercice` mentions a word, rather than using it.

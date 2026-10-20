@@ -469,14 +469,35 @@ pub fn check(text: &str) -> Vec<Issue> {
     check_in(text, ProofLang::Fr)
 }
 
-/// A known finite-person correction can also resolve a misspelled contraction (`J’est`).
+/// A known personal-subject or reflexive-auxiliary correction can resolve a misspelled contraction.
 pub(crate) fn is_personal_subject_issue(issue: &Issue) -> bool {
-    issue.message == super::subject_agreement::MESSAGE
+    matches!(issue.message.as_str(), super::subject_agreement::MESSAGE | super::subject_agreement::AUXILIARY_MESSAGE)
+}
+
+/// Context required for a personal-subject suggestion, independently of the
+/// smaller range it replaces. Auxiliary choice also depends on the participle.
+pub(crate) fn required_context_range(text: &str, issue: &Issue) -> Option<std::ops::Range<usize>> {
+    if issue.message == super::subject_agreement::AUXILIARY_MESSAGE {
+        super::subject_agreement::auxiliary_context_range(text)
+    } else {
+        text.get(issue.start..issue.end)?;
+        Some(issue.start..issue.end)
+    }
 }
 
 /// Grammar issues in a paragraph of `lang` text ([`ProofLang::Fr`], or [`ProofLang::FrCa`] for
 /// Quebec typography), in order.
 pub fn check_in(text: &str, lang: ProofLang) -> Vec<Issue> {
+    check_in_impl(text, lang, false)
+}
+
+/// The mixed-language dispatcher must validate deciding contexts before suppressing
+/// conflicting elisions. The public single-language entry point keeps its precedence.
+pub(crate) fn check_in_preserving_conflicts(text: &str, lang: ProofLang) -> Vec<Issue> {
+    check_in_impl(text, lang, true)
+}
+
+fn check_in_impl(text: &str, lang: ProofLang, preserve_conflicting_elisions: bool) -> Vec<Issue> {
     let ws: Vec<(usize, usize)> = words(text);
     let mut v = Vec::new();
     high_punctuation(text, lang == ProofLang::FrCa, &mut v);
@@ -490,7 +511,9 @@ pub fn check_in(text: &str, lang: ProofLang) -> Vec<Issue> {
     if let Some(subject) = super::subject_agreement::check(text, &ws) {
         // Agreement takes precedence over a conflicting apostrophe-only fix: `Je est`
         // needs `Je suis`, never `J’est`. Unrelated typography suggestions are retained.
-        v.retain(|old| !(old.message.starts_with("Élision") && old.start < subject.end && subject.start < old.end));
+        if !preserve_conflicting_elisions {
+            v.retain(|old| !(old.message.starts_with("Élision") && old.start < subject.end && subject.start < old.end));
+        }
         v.push(subject);
     }
     for i in &mut v {
