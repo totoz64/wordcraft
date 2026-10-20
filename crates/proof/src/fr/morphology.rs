@@ -333,6 +333,15 @@ impl Lexicon {
             })
     }
 
+    pub(super) fn has_finite_lemma(&self, form: &str, lemma: &str) -> bool {
+        form.len() <= MAX_WORD_BYTES
+            && lemma.len() <= MAX_WORD_BYTES
+            && self
+                .analyses(form)
+                .iter()
+                .any(|r| r.tenses != 0 && usize::try_from(r.lemma).ok().and_then(|i| self.lemmas.get(i)).is_some_and(|s| s == lemma))
+    }
+
     /// Preserve any valid finite reading. Otherwise suggest forms of the same lemmas and
     /// overlapping tenses, bounded to eight alternatives. Unknown forms stay unmarked.
     pub fn agreement_forms(&self, form: &str, target: Person) -> Option<Vec<String>> {

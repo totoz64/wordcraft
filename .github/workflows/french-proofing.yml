@@ -141,6 +141,11 @@ jobs:
           WORDCRAFT_FRENCH_LEXICON: ${{ runner.temp }}/wordcraft-french-morphology/lexique-grammalecte-fr-v7.7.txt
         run: cargo test --locked -p wordcraft-proof --test french_subject_agreement -- --ignored
 
+      - name: Required real French clitic agreement gate
+        env:
+          WORDCRAFT_FRENCH_LEXICON: ${{ runner.temp }}/wordcraft-french-morphology/lexique-grammalecte-fr-v7.7.txt
+        run: cargo test --locked -p wordcraft-proof --test french_clitic_agreement -- --ignored
+
       - name: Required real French dictionary gate
         env:
           WORDCRAFT_DICTIONARIES: ${{ runner.temp }}/wordcraft-french-dictionary

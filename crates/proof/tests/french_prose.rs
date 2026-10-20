@@ -28,13 +28,12 @@ fn auxiliary_beginning(text: &str) -> bool {
     words.next().is_some_and(|word| auxiliaries.contains(&word.strip_prefix("n'").unwrap_or(word)))
 }
 
-fn finite_personal_beginning(text: &str, lexicon: &morphology::Lexicon) -> bool {
+fn finite_personal_beginning(text: &str, lexicon: &morphology::Lexicon) -> Option<bool> {
     use morphology::Person;
     let mut words = text.split_whitespace();
-    let Some(mut first) = words.next() else { return false };
+    let mut first = words.next()?;
     if matches!(first, "—" | "–" | "-") {
-        let Some(next) = words.next() else { return false };
-        first = next;
+        first = words.next()?;
     }
     let fused =
         first.strip_prefix("J’").or_else(|| first.strip_prefix("j’")).or_else(|| first.strip_prefix("J'")).or_else(|| first.strip_prefix("j'"));
@@ -60,17 +59,40 @@ fn finite_personal_beginning(text: &str, lexicon: &morphology::Lexicon) -> bool 
                 | "elles"
         )
     {
-        return false;
+        return None;
     }
-    let Some(mut form) = fused.or_else(|| words.next()) else { return false };
-    if form == "ne" {
-        let Some(next) = words.next() else { return false };
-        form = next;
+    let mut part = fused.or_else(|| words.next())?;
+    let mut clitic = false;
+    // Independent exposure counter, not an acceptance parser or precision measure.
+    for _ in 0..5 {
+        if part.len() > 160 {
+            return None;
+        }
+        if let Some((head, tail)) = part.split_once(['’', '\'']) {
+            if !matches!(head, "n" | "m" | "t" | "s" | "l") {
+                return None;
+            }
+            clitic |= head != "n";
+            part = tail;
+        } else if matches!(part, "ne" | "me" | "te" | "se" | "nous" | "vous" | "le" | "la" | "les" | "lui" | "leur" | "y" | "en") {
+            clitic |= part != "ne";
+            part = words.next()?;
+        } else {
+            let form = part.trim_end_matches([',', '.', ';', ':', '!', '?', '…']);
+            return [
+                Person::FirstSingular,
+                Person::SecondSingular,
+                Person::ThirdSingular,
+                Person::FirstPlural,
+                Person::SecondPlural,
+                Person::ThirdPlural,
+            ]
+            .into_iter()
+            .any(|p| lexicon.has_person_reading(form, p))
+            .then_some(clitic);
+        }
     }
-    form = form.strip_prefix("n’").or_else(|| form.strip_prefix("n'")).unwrap_or(form).trim_end_matches([',', '.', ';', ':', '!', '?', '…']);
-    [Person::FirstSingular, Person::SecondSingular, Person::ThirdSingular, Person::FirstPlural, Person::SecondPlural, Person::ThirdPlural]
-        .into_iter()
-        .any(|p| lexicon.has_person_reading(form, p))
+    None
 }
 
 #[test]
@@ -89,6 +111,7 @@ fn external_prose_reports_actual_auxiliary_contexts_and_new_alerts() {
     let (mut originals, mut variants, mut original_aux, mut variant_aux) = (0usize, 0usize, 0usize, 0usize);
     let mut alerts = Vec::new();
     let (mut personal, mut unquoted_personal) = (0usize, 0usize);
+    let (mut clitic_beginnings, mut unquoted_clitic) = (0usize, 0usize);
     for (index, line) in input.lines().enumerate() {
         let (source, text) = line.split_once('\t').expect("source<TAB>one normalized paragraph");
         paragraphs += 1;
@@ -99,10 +122,16 @@ fn external_prose_reports_actual_auxiliary_contexts_and_new_alerts() {
             originals += 1;
         }
         words += text.split_whitespace().count();
-        if finite_personal_beginning(text, &readings) {
+        if let Some(clitic) = finite_personal_beginning(text, &readings) {
             personal += 1;
+            if clitic {
+                clitic_beginnings += 1;
+            }
             if !text.chars().any(|c| matches!(c, '"' | '«' | '»' | '“' | '”' | '`' | '<' | '>' | '=' | '@' | '\\' | '\t' | '\n' | '\r')) {
                 unquoted_personal += 1;
+                if clitic {
+                    unquoted_clitic += 1;
+                }
             }
         }
         if auxiliary_beginning(text) {
@@ -137,7 +166,11 @@ fn external_prose_reports_actual_auxiliary_contexts_and_new_alerts() {
     eprintln!(
         "Known finite personal-subject beginnings: {personal}, including {unquoted_personal} unquoted; prefix counts, not a precision estimate."
     );
+    eprintln!(
+        "Including clitic beginnings: {clitic_beginnings}, of which {unquoted_clitic} are unquoted; overlapping variants are not independent samples."
+    );
     assert!(paragraphs > 1000 && beginnings > 20, "real external prose must exercise actual trigger contexts");
     assert!(personal > 200, "the added subject rule needs actual known finite contexts");
+    assert!(clitic_beginnings > 20, "the added clitic rule needs actual known finite contexts");
     assert!(alerts.is_empty(), "inspect source and classify any alert before accepting it; this is not a blind precision claim");
 }

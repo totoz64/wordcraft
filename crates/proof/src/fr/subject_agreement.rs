@@ -18,6 +18,112 @@ struct Candidate<'a> {
     negative: bool,
     next: usize,
     contracted_je: bool,
+    clitics: Vec<Clitic>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Clitic {
+    Me,
+    Te,
+    Se,
+    Nous,
+    Vous,
+    Le,
+    La,
+    ElidedL,
+    Les,
+    Lui,
+    Leur,
+    Y,
+    En,
+}
+
+impl Clitic {
+    fn rank(self) -> u8 {
+        match self {
+            Self::Me | Self::Te | Self::Se | Self::Nous | Self::Vous => 1,
+            Self::Le | Self::La | Self::ElidedL | Self::Les => 2,
+            Self::Lui | Self::Leur => 3,
+            Self::Y => 4,
+            Self::En => 5,
+        }
+    }
+    fn word(self) -> Option<&'static str> {
+        Some(match self {
+            Self::Me => "me",
+            Self::Te => "te",
+            Self::Se => "se",
+            Self::Nous => "nous",
+            Self::Vous => "vous",
+            Self::Le => "le",
+            Self::La => "la",
+            Self::ElidedL => return None,
+            Self::Les => "les",
+            Self::Lui => "lui",
+            Self::Leur => "leur",
+            Self::Y => "y",
+            Self::En => "en",
+        })
+    }
+    fn short(self) -> Option<&'static str> {
+        match self {
+            Self::Me => Some("m"),
+            Self::Te => Some("t"),
+            Self::Se => Some("s"),
+            Self::Le | Self::La | Self::ElidedL => Some("l"),
+            _ => None,
+        }
+    }
+    fn full(word: &str) -> Option<Self> {
+        Some(match word {
+            "me" => Self::Me,
+            "te" => Self::Te,
+            "se" => Self::Se,
+            "nous" => Self::Nous,
+            "vous" => Self::Vous,
+            "le" => Self::Le,
+            "la" => Self::La,
+            "les" => Self::Les,
+            "lui" => Self::Lui,
+            "leur" => Self::Leur,
+            "y" => Self::Y,
+            "en" => Self::En,
+            _ => return None,
+        })
+    }
+    fn contracted(word: &str) -> Option<Self> {
+        match word {
+            "m" => Some(Self::Me),
+            "t" => Some(Self::Te),
+            "s" => Some(Self::Se),
+            "l" => Some(Self::ElidedL),
+            _ => None,
+        }
+    }
+    fn reflexive(self, person: Person) -> bool {
+        matches!(
+            (self, person),
+            (Self::Me, Person::FirstSingular)
+                | (Self::Te, Person::SecondSingular)
+                | (Self::Se, Person::ThirdSingular | Person::ThirdPlural)
+                | (Self::Nous, Person::FirstPlural)
+                | (Self::Vous, Person::SecondPlural)
+        )
+    }
+    fn finite_context(self) -> bool {
+        matches!(self, Self::Me | Self::Te | Self::Se | Self::Nous | Self::Vous | Self::Lui)
+    }
+}
+
+fn push_clitic(clitics: &mut Vec<Clitic>, clitic: Clitic, target: Person) -> Option<()> {
+    if clitics.len() >= 3
+        || clitics.last().is_some_and(|last| last.rank() >= clitic.rank())
+        || (clitic == Clitic::Se && !matches!(target, Person::ThirdSingular | Person::ThirdPlural))
+    {
+        return None;
+    }
+    clitics.push(clitic);
+    Some(())
 }
 
 fn horizontal(gap: &str) -> bool {
@@ -32,13 +138,13 @@ fn candidate<'a>(text: &'a str, ws: &[(usize, usize)]) -> Option<Candidate<'a>> 
         return None;
     }
     let first = text.get(a..b)?;
-    if first.len() > 132 || first.chars().skip(1).any(char::is_uppercase) {
+    if first.len() > 160 || first.chars().skip(1).any(char::is_uppercase) {
         return None;
     }
-    let (start, end, form, target, je, negative, next, contracted_je) = if let Some(form) =
+    let (start, mut end, mut part, target, je, mut index, contracted_je) = if let Some(form) =
         first.strip_prefix("J’").or_else(|| first.strip_prefix("j’")).or_else(|| first.strip_prefix("J'")).or_else(|| first.strip_prefix("j'"))
     {
-        (a, b, form, Person::FirstSingular, true, false, 1, true)
+        (a, b, form, Person::FirstSingular, true, 0usize, true)
     } else {
         let lower = first.to_lowercase();
         let target = match lower.as_str() {
@@ -50,29 +156,53 @@ fn candidate<'a>(text: &'a str, ws: &[(usize, usize)]) -> Option<Candidate<'a>> 
             "ils" | "elles" => Person::ThirdPlural,
             _ => return None,
         };
-        let &(start, mut end) = ws.get(1)?;
+        let &(start, end) = ws.get(1)?;
         if !horizontal(text.get(b..start)?) {
             return None;
         }
-        let mut form = text.get(start..end)?;
-        let mut next = 2;
-        let negative = if form == "ne" {
-            let &(c, d) = ws.get(2)?;
+        (start, end, text.get(start..end)?, target, lower == "je", 1usize, false)
+    };
+    let mut negative = false;
+    let mut clitics = Vec::new();
+    let mut form = None;
+    // At most ne + three ordered clitics + the finite form. Apostrophe-linked parts
+    // count too; no unbounded skipping or crossing punctuation/line breaks.
+    for _ in 0..5 {
+        if part.is_empty() {
+            index = index.saturating_add(1);
+            let &(c, d) = ws.get(index)?;
             if !horizontal(text.get(end..c)?) {
                 return None;
             }
-            form = text.get(c..d)?;
+            part = text.get(c..d)?;
             end = d;
-            next = 3;
-            true
-        } else if let Some(verb) = form.strip_prefix("n’").or_else(|| form.strip_prefix("n'")) {
-            form = verb;
-            true
+        }
+        if part.len() > 160 {
+            return None;
+        }
+        if let Some((head, tail)) = part.split_once(['’', '\'']) {
+            if head == "n" && !negative && clitics.is_empty() {
+                negative = true;
+            } else {
+                push_clitic(&mut clitics, Clitic::contracted(head)?, target)?;
+            }
+            if tail.is_empty() {
+                return None;
+            }
+            part = tail;
+        } else if part == "ne" && !negative && clitics.is_empty() {
+            negative = true;
+            part = "";
+        } else if let Some(clitic) = Clitic::full(part) {
+            push_clitic(&mut clitics, clitic, target)?;
+            part = "";
         } else {
-            false
-        };
-        (start, end, form, target, lower == "je", negative, next, false)
-    };
+            form = Some(part);
+            break;
+        }
+    }
+    let form = form?;
+    let next = index.saturating_add(1);
     if form.is_empty() || form.len() > 128 || !form.chars().all(char::is_lowercase) {
         return None;
     }
@@ -101,6 +231,7 @@ fn candidate<'a>(text: &'a str, ws: &[(usize, usize)]) -> Option<Candidate<'a>> 
         negative,
         next,
         contracted_je,
+        clitics,
     })
 }
 
@@ -141,18 +272,55 @@ fn known_elision(form: &str) -> Option<bool> {
     if form.starts_with('h') && !elides { None } else { Some(elides) }
 }
 
-fn check_with(text: &str, ws: &[(usize, usize)], lexicon: &Lexicon) -> Option<Issue> {
-    let candidate = candidate(text, ws)?;
+fn check_candidate(text: &str, ws: &[(usize, usize)], lexicon: &Lexicon, candidate: Candidate<'_>) -> Option<Issue> {
     let forms = lexicon.agreement_forms(candidate.form, candidate.target)?;
+    // Reflexive compound verbs require être, so a person-only avoir change could
+    // introduce an invalid m’ai/s’a etc. Auxiliary choice is a separate rule.
+    if candidate.clitics.iter().any(|c| c.reflexive(candidate.target)) && lexicon.has_finite_lemma(candidate.form, "avoir") {
+        return None;
+    }
     if !candidate.negative
         && matches!(candidate.target, Person::FirstPlural | Person::SecondPlural | Person::ThirdPlural)
         && lexicon.has_nonverbal_reading(candidate.form)
+        && !candidate.clitics.iter().any(|c| c.finite_context())
         && (!lexicon.has_auxiliary_reading(candidate.form) || nominal_context(text, ws, &candidate, lexicon))
     {
         return None;
     }
     let mut start = candidate.start;
-    let suggestions = if candidate.negative {
+    let suggestions = if !candidate.clitics.is_empty() {
+        let mut rendered = Vec::new();
+        for form in forms {
+            let mut first = form.as_str();
+            let mut phrase = form.clone();
+            for clitic in candidate.clitics.iter().rev() {
+                let elides = if clitic.short().is_some() { known_elision(first)? } else { false };
+                if elides {
+                    phrase = format!("{}’{phrase}", clitic.short()?);
+                    first = clitic.word().unwrap_or("le");
+                } else {
+                    // An elided l’ lost le/la gender; do not guess it when uneliding.
+                    let word = clitic.word()?;
+                    phrase = format!("{word} {phrase}");
+                    first = word;
+                }
+            }
+            if candidate.negative {
+                phrase = if known_elision(first)? { format!("n’{phrase}") } else { format!("ne {phrase}") };
+                first = "ne";
+            }
+            if candidate.je && (candidate.contracted_je || known_elision(first)?) {
+                start = candidate.subject_start;
+                phrase = if known_elision(first)? {
+                    format!("{}’{phrase}", if candidate.capital { "J" } else { "j" })
+                } else {
+                    format!("{} {phrase}", if candidate.capital { "Je" } else { "je" })
+                };
+            }
+            rendered.push(phrase);
+        }
+        rendered
+    } else if candidate.negative {
         forms
             .into_iter()
             .map(|form| known_elision(&form).map(|elides| if elides { format!("n’{form}") } else { format!("ne {form}") }))
@@ -182,8 +350,13 @@ fn check_with(text: &str, ws: &[(usize, usize)], lexicon: &Lexicon) -> Option<Is
 }
 
 pub(super) fn check(text: &str, ws: &[(usize, usize)]) -> Option<Issue> {
-    candidate(text, ws)?; // Avoid optional-data loading for unrelated paragraphs.
-    check_with(text, ws, &super::morphology::lexicon())
+    let parsed = candidate(text, ws)?; // Avoid optional-data loading for unrelated paragraphs.
+    check_candidate(text, ws, &super::morphology::lexicon(), parsed)
+}
+
+#[cfg(test)]
+fn check_with(text: &str, ws: &[(usize, usize)], lexicon: &Lexicon) -> Option<Issue> {
+    check_candidate(text, ws, lexicon, candidate(text, ws)?)
 }
 
 #[cfg(test)]
@@ -219,6 +392,8 @@ mod tests {
             ("J’est responsable.", "J’est", "Je suis"),
             ("J'ont raison.", "J'ont", "J’ai"),
             ("j’êtes responsable.", "j’êtes", "je suis"),
+            ("Nous lui a parlé.", "lui a", "lui avons"),
+            ("Nous ne lui a parlé.", "ne lui a", "ne lui avons"),
         ] {
             let issue = found(text).unwrap_or_else(|| panic!("{text}"));
             assert_eq!(&text[issue.start..issue.end], wrong, "{text}");
@@ -244,8 +419,6 @@ mod tests {
             "Nous as du volant sommes prudents.",
             "Nous as du volant, nous sommes prudents.",
             "Nous, a raison.",
-            "Nous lui a parlé.",
-            "Nous ne lui a parlé.",
             "Nous avons manger.",
             "Nous xyzxyz.",
             "Nous manger.",
@@ -255,6 +428,55 @@ mod tests {
             "Voici une phrase. Nous a raison.",
             "« Nous a raison. »",
             "Nous a comme verbe dans cet exemple.",
+        ] {
+            assert!(found(text).is_none(), "{text}");
+        }
+    }
+
+    #[test]
+    fn clitics_and_negation_are_retained_when_person_changes() {
+        for (text, wrong, right) in [
+            ("Tu me est cher.", "me est", "m’es"),
+            ("Elle te es chère.", "te es", "t’est"),
+            ("Il s’es préparé.", "s’es", "s’est"),
+            ("Je m’est préparé.", "m’est", "me suis"),
+            ("Nous nous est trompés.", "nous est", "nous sommes"),
+            ("Vous vous es trompés.", "vous es", "vous êtes"),
+            ("Il y ont une place.", "y ont", "y a"),
+            ("Ils y a une place.", "y a", "y ont"),
+            ("Il y en ont deux.", "y en ont", "y en a"),
+            ("Il n’y en ont pas.", "n’y en ont", "n’y en a"),
+            ("Je n’en ont pas.", "n’en ont", "n’en ai"),
+            ("J’y est bien.", "J’y est", "J’y suis"),
+            ("J’en ont besoin.", "J’en ont", "J’en ai"),
+            ("Je en ont besoin.", "Je en ont", "J’en ai"),
+            ("Je l’a lu.", "l’a", "l’ai"),
+            ("Tu l’ont lu.", "l’ont", "l’as"),
+            ("Je le avons lu.", "le avons", "l’ai"),
+            ("Je la avons vue.", "la avons", "l’ai"),
+            ("Je le est.", "le est", "le suis"),
+            ("Il le es.", "le es", "l’est"),
+            ("Je ne me y êtes préparé.", "ne me y êtes", "ne m’y suis"),
+            ("Tu me y ont conduit.", "me y ont", "m’y as"),
+        ] {
+            let issue = found(text).unwrap_or_else(|| panic!("{text}"));
+            assert_eq!(&text[issue.start..issue.end], wrong, "{text}");
+            assert_eq!(issue.suggestions, [right], "{text}");
+            let fixed = format!("{}{right}{}", &text[..issue.start], &text[issue.end..]);
+            assert!(found(&fixed).is_none(), "{fixed}");
+        }
+        // Ambiguous/unsupported errors, not correct-text precision evidence.
+        let ambiguous = found("Elle te sommes.").unwrap();
+        assert_eq!(ambiguous.suggestions, ["t’est", "te somme"], "both être and sommer readings remain available");
+        for text in [
+            "Je l’est.",
+            "Je me as offert un cadeau.",
+            "Il s’ont trompé.",
+            "Nous se est trompés.",
+            "Je lui le ont donné.",
+            "Je me me ont parlé.",
+            "Je me le lui y ont donné.",
+            "Je les; est.",
         ] {
             assert!(found(text).is_none(), "{text}");
         }

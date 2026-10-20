@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660); previously minor (French personal-subject agreement; baseline #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660); previously minor (French personal-subject agreement; baseline #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
 
 ## Shared-engine compatibility and reproducible CI
 
@@ -122,6 +122,37 @@ determine the person/number; polite singular vous still takes the plural verb, a
 An optional separated dialogue dash and immediate `ne` or contracted `n’`/`n'` are supported.
 Fused `J’est`/`J'est` becomes `Je suis`; `Je n’est` becomes `Je ne suis`.
 
+Object/reflexive clitics can now intervene: `Je les voit` → `Je les vois`,
+`Nous lui dis` → `Nous lui disons`, `Il se demandent` → `Il se demande`.
+The bounded prefix accepts at most three clitics in increasing pre-verbal groups:
+me/te/se/nous/vous → le/la/les → lui/leur → y → en, with ne/n’ before them.
+Same-group repetitions, reverse order, excessive prefixes and punctuation/line breaks are
+declined. This is finite agreement before the verb, not imperative/post-verbal reordering.
+See the [OQLF pronominal complement table](https://vitrinelinguistique.oqlf.gouv.qc.ca/24134/la-grammaire/les-pronoms/pronoms-personnels/la-reprise-ou-lomission-du-pronom-personnel-complement)
+and its [pre-verbal/negative examples and elisions](https://vitrinelinguistique.oqlf.gouv.qc.ca/24206/la-grammaire/les-pronoms/pronoms-personnels/pronoms-personnels-employes-avec-un-verbe-a-limperatif).
+
+Apostrophe-linked prefixes, straight or curly, are parsed too: `Je n’en voit` → `Je n’en vois`,
+`J’y vont` → `J’y vais`, `Je m’est préparé` → `Je me suis préparé` and
+`Je le avons lu` → `Je l’ai lu`. Suggestions rebuild the bounded prefix with every object
+and ne/n’ retained, rather than dropping them or producing J’l’ai / Je le ai. New grammatical
+elisions use the existing curly-apostrophe convention. An elided l’ has lost le/la gender;
+when correction would require uneliding it, the rule declines instead of guessing. The
+existing unknown-h policy is retained when an elision decision needs pronunciation data.
+
+Se must match a third-person subject. Reflexive clitics are recognized by their person;
+a person-only correction of avoir in that construction is declined, since
+[pronominal compound verbs require être](https://vitrinelinguistique.oqlf.gouv.qc.ca/22939/la-grammaire/le-verbe/verbes-pronominaux/emploi-de-la-forme-pronominale).
+This increment does not select a new auxiliary or fix missing/wrong clitic persons.
+Personal me/te/se/nous/vous/lui establish a finite context; determiner-like le/la/les/leur
+and en/y retain the nominal ambiguity guards. `Nous les guides de montagne…` and
+`Nous en juges impartiaux…` therefore remain quiet.
+
+The person correction leaves following participles unchanged: `Je les ont confiés` →
+`Je les ai confiés`, `Nous les as offertes` → `Nous les avons offertes`.
+The separate infinitive/participle rule is not extended past preposed objects, whose
+gender/number agreement needs additional analysis. A later infinitive after a valid finite
+verb, such as `Je veux vous remercier`, is not reinterpreted as this prefix.
+
 The existing four original present paradigms work without optional data. With the data,
 all supported finite tenses/moods remain available. Any valid person reading stays quiet:
 `Tu suis cette piste` and `Tu sommes le débiteur de payer` retain their suivre/sommer readings.
@@ -149,20 +180,24 @@ marks for that same contraction. Thus real-dictionary `J’est` has one useful g
 suggestion rather than duplicate spelling/grammar guesses. Spelling-only mode still reports
 the misspelling, other misspelled words remain, and a whole-subject replacement cannot cross
 a proofing-language boundary. Quotations, code, tables, metalinguistic examples, intervening
-object clitics/adverbs and later clauses remain outside the new rule.
+adverbs, invalid/excessive clitic prefixes and later clauses remain outside the new rule.
 
 Independent synthetic and pinned-data tests cover exact ranges, six persons, all seven
 finite tense/mood categories, negative/fused contractions, nominal and participial appositions,
 unrelated errors, language boundaries and stable suggestions in both French regions. Unsupported
 errors and ambiguous fragments are kept separate from correct-text evidence. The external prose
-gate additionally observes 872 known finite personal-subject beginnings, including 748 unquoted
-beginnings, with no new subject/participle alerts across the same four books. These are prefix
+gate additionally observes 1,247 known finite personal-subject beginnings, including 1,064 unquoted
+beginnings (375 clitic beginnings, 316 unquoted), with no new subject/participle alerts across the same four books. These are prefix
 counts, include overlapping dialogue variants, and are not a precision estimate.
 
 F7/Change/Undo and grammar marks off/on use the same commands as the UI. The engine regression
 fixes `Nous a déjà écrire` in two stages: a → avons shifts the later byte range and enables
 the participle check, then écrire → écrit; two undos restore the initial issue. The existing
 elision → participle sequence remains covered.
+The clitic regression also fixes ASCII `s'es` → curly `s’est` in `Il s'es trompé:`:
+the added UTF-8 bytes move the later colon; F7 must then select its new range for the
+French non-breaking-space correction, in both regions. New pinned-data cases verify
+ordered/contracted clitics, retained participles, negative prefixes and stable alternatives.
 
 ## Personal-cleft agreement and optional morphology
 
@@ -303,6 +338,7 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 | 2026-10-20 | minor | French dictionary replacement clears stale load errors only after successful parsing; Canadian French keeps its own Options label |
 | 2026-10-20 | trivial | French hyphenation pattern asset included in both workflow path filters so pattern-only changes run the proofing regressions |
 | 2026-10-20 | minor | Frozen pre-French affix outputs and legacy compact dictionaries agree; French CI pins Rust 1.98.1 and checks formatting on all three desktop systems |
+| 2026-10-20 | minor | French initial finite agreement through bounded ordered clitics: retained objects/negation/elision, reflexive-avoir and unknown-gender guards, preposed participles untouched, real-data/prose and UTF-8 Review regressions |
 | 2026-10-20 | minor | French initial personal-subject agreement: preserved finite/nominal/participial readings, scoped elision and spelling precedence, negative contractions, mixed-language protection and real-data/prose regressions |
 | 2026-10-20 | minor | French participles through explicit negation and 19 common adverbs; three-word bound, idiom/clitic guards, exact-range stable corrections and expanded real-data/prose checks |
 | 2026-10-20 | minor | French irregular participles: five avoir tenses, 66 original fallback pairs, bounded optional lexical coverage and separate prose smoke gate; no general agreement claim |
