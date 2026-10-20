@@ -12,8 +12,10 @@
 //!   typos, and a dictionary scan for anything further off.
 //! - **Grammar** ([`grammar`]): French typography and a few reliable rules, with French messages.
 
+mod agreement;
 mod conjugation;
 pub mod grammar;
+pub mod morphology;
 mod suggest;
 #[cfg(test)]
 pub(crate) mod test_dict;
@@ -68,6 +70,7 @@ pub fn install_dictionary(aff: &str, dic: &str) -> Result<(), String> {
 /// [`crate::hunspell::set_dictionary_dir`] or a dictionary was installed).
 pub fn reload_dictionary() {
     *DICT.write().unwrap_or_else(|e| e.into_inner()) = None;
+    morphology::reload();
 }
 
 /// The `.dic` file of the Hunspell French dictionary found in the dictionaries folder or the

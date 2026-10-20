@@ -481,6 +481,7 @@ pub fn check_in(text: &str, lang: ProofLang) -> Vec<Issue> {
     sentence_capitals(text, &ws, &mut v);
     elisions(text, &ws, &mut v);
     super::conjugation::check(text, &ws, &mut v);
+    super::agreement::check(text, &ws, &mut v);
     for i in &mut v {
         i.lang = lang;
     }

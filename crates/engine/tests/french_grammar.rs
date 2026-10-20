@@ -23,10 +23,16 @@ fn drawn_grammar_marks(session: &mut Session) -> usize {
 }
 
 #[test]
-fn french_participle_and_elision_suggestions_apply_and_undo_in_both_regions() {
-    wordcraft_proof::fr::install_dictionary("SET UTF-8\nICONV 1\nICONV ’ '\n", "9\nj'ai\nmanger\nmangé\nsi\nil\ns'il\nvient\ntu\nas\n").unwrap();
+fn french_grammar_suggestions_apply_and_undo_in_both_regions() {
+    wordcraft_proof::fr::install_dictionary(
+        "SET UTF-8\nICONV 1\nICONV ’ '\n",
+        "14\nj'ai\nmanger\nmangé\nsi\nil\ns'il\nvient\ntu\nas\nc'est\nmoi\nqui\nest\nsuis\n",
+    )
+    .unwrap();
     for language in ["fr-FR", "fr-CA"] {
-        for (original, flagged, suggestion) in [("J’ai manger.", "manger", "mangé"), ("Si il vient.", "Si il", "S’il")] {
+        for (original, flagged, suggestion) in
+            [("J’ai manger.", "manger", "mangé"), ("Si il vient.", "Si il", "S’il"), ("C’est moi qui est.", "est", "suis")]
+        {
             let mut session = Session::new(Document::from_text(original));
             run(&mut session, "select.all", json!({}));
             run(&mut session, "review.language", json!({"lang": language, "default": true}));
