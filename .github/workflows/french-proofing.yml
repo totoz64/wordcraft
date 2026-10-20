@@ -13,6 +13,7 @@ on:
       - 'crates/engine/tests/french_grammar.rs'
       - 'crates/engine/tests/french_reflexive_auxiliary.rs'
       - 'crates/engine/tests/fr_mixed_context.rs'
+      - 'crates/engine/tests/french_local_language_boundaries.rs'
       - 'docs/french-proofing.md'
       - 'docs/spelling-dictionaries.md'
       - '.github/workflows/french-proofing.yml'
@@ -29,6 +30,7 @@ on:
       - 'crates/engine/tests/french_grammar.rs'
       - 'crates/engine/tests/french_reflexive_auxiliary.rs'
       - 'crates/engine/tests/fr_mixed_context.rs'
+      - 'crates/engine/tests/french_local_language_boundaries.rs'
       - 'docs/french-proofing.md'
       - 'docs/spelling-dictionaries.md'
       - '.github/workflows/french-proofing.yml'
@@ -236,3 +238,6 @@ jobs:
 
       - name: Mixed French grammar review context
         run: cargo test --locked -p wordcraft-engine --test fr_mixed_context
+
+      - name: Local French grammar language boundaries and undo
+        run: cargo test --locked -p wordcraft-engine --test french_local_language_boundaries

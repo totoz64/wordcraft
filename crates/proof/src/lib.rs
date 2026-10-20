@@ -806,11 +806,12 @@ pub fn check_text_with(text: &str, spans: &[(Range<usize>, ProofLang)], opts: &O
             grammar_in(text, lang, !list_item)
         };
         for issue in found.into_iter().filter(|i| lang_at(i.start) == lang) {
-            if matches!(lang, ProofLang::Fr | ProofLang::FrCa) && fr::grammar::requires_syntactic_context(&issue) {
-                // The deciding subject, auxiliary and bridge must belong to one
-                // French region, even when only the finite verb or participle changes.
+            if matches!(lang, ProofLang::Fr | ProofLang::FrCa) {
+                // Every replaced byte must belong to one French region. Initial
+                // syntax additionally needs its deciding subject, auxiliary and bridge.
                 let Some(context) = fr::grammar::required_context_range(text, &issue) else { continue };
-                if !merged.iter().any(|(range, language)| *language == lang && range.start <= context.start && context.end <= range.end) {
+                let index = merged.partition_point(|(range, _)| range.end <= context.start);
+                if !merged.get(index).is_some_and(|(range, language)| *language == lang && range.start <= context.start && context.end <= range.end) {
                     continue;
                 }
             }
