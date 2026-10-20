@@ -26,7 +26,7 @@ fn drawn_grammar_marks(session: &mut Session) -> usize {
 fn french_grammar_suggestions_apply_and_undo_in_both_regions() {
     wordcraft_proof::fr::install_dictionary(
         "SET UTF-8\nICONV 1\nICONV ’ '\n",
-        "19\nj'ai\nmanger\nmangé\nsi\nil\ns'il\nvient\ntu\nas\nc'est\nmoi\nqui\nest\nsuis\nj'avais\nécrire\nécrit\nje\navais\n",
+        "25\nj'ai\nmanger\nmangé\nsi\nil\ns'il\nvient\ntu\nas\nc'est\nmoi\nqui\nest\nsuis\nj'avais\nécrire\nécrit\nje\navais\nn'ai\nn'avais\npas\ndéjà\nencore\nbien\n",
     )
     .unwrap();
     for language in ["fr-FR", "fr-CA"] {
@@ -35,6 +35,9 @@ fn french_grammar_suggestions_apply_and_undo_in_both_regions() {
             ("Si il vient.", "Si il", "S’il"),
             ("C’est moi qui est.", "est", "suis"),
             ("J’avais écrire.", "écrire", "écrit"),
+            ("Je n’ai pas écrire.", "écrire", "écrit"),
+            ("J’ai déjà écrire.", "écrire", "écrit"),
+            ("Je n’avais pas encore bien écrire.", "écrire", "écrit"),
         ] {
             let mut session = Session::new(Document::from_text(original));
             run(&mut session, "select.all", json!({}));
@@ -62,7 +65,7 @@ fn french_grammar_suggestions_apply_and_undo_in_both_regions() {
         }
         // Elision changes the UTF-8 byte length before the new participle issue. F7 must
         // recompute its range, then two independent undos must restore both original issues.
-        let mut session = Session::new(Document::from_text("Je avais écrire."));
+        let mut session = Session::new(Document::from_text("Je avais déjà écrire."));
         run(&mut session, "select.all", json!({}));
         run(&mut session, "review.language", json!({"lang":language,"default":true}));
         assert_eq!(run(&mut session, "review.issues", json!({})).as_array().unwrap().len(), 2);

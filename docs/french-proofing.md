@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660)
 
 ## Shared-engine compatibility and reproducible CI
 
@@ -53,6 +53,21 @@ Both `fr-FR` and `fr-CA` support these bounded suggestions:
   [Académie conjugation](https://www.dictionnaire-academie.fr/conjuguer/A9A3461).
   One separated dialogue/list dash (`—`, `–`, `-`) may precede the subject.
 
+Explicit negative auxiliaries are supported too: `Je n’ai pas écrire` → `Je n’ai pas écrit`,
+`Nous n’avions plus jamais lire` → `Nous n’avions plus jamais lu`, including straight apostrophes.
+Negation requires a matched `n’` + auxiliary and `pas`, `plus`, `jamais`, `guère` or `point`;
+the additional combinations `plus jamais`, `jamais plus`, `pas plus`, `guère plus` and
+`pas du tout` are explicit. This follows the [OQLF placement of negation around an auxiliary](https://vitrinelinguistique.oqlf.gouv.qc.ca/23909/la-syntaxe/la-negation-et-la-restriction/place-du-verbe-avec-ne-pas-et-ne-pas).
+Negation is not added, removed or otherwise rewritten.
+
+A short explicit list also allows `J’ai déjà écrire` → `J’ai déjà écrit`: `aussi`, `assez`,
+`beaucoup`, `bien`, `bientôt`, `déjà`, `encore`, `finalement`, `mal`, `mieux`, `peu`, `presque`,
+`probablement`, `rarement`, `seulement`, `souvent`, `toujours`, `trop`, `vraiment`. At most
+three intervening **words**, counting negative words and `du tout`, are accepted; every gap
+must be horizontal whitespace. The rule never skips an existing participle, an object clitic,
+`à`, restrictive `que` or `beau`. Thus `J’ai déjà fait relire`, `J’ai beau écrire`,
+`Je n’ai pas à écrire` and `Je les avais déjà écrites` remain unmarked by this check.
+
 There are 66 original fallback infinitive/participle pairs, including irregular verbs. Optional
 data supplies additional recorded forms; no arbitrary ending is transformed. A valid recorded
 participle reading stays quiet. Verbs requiring être, unknown auxiliary choices and unavailable
@@ -62,25 +77,26 @@ For mixed/uncertain transitive–intransitive uses, an adjacent object determine
 impersonal verbs require explicit `il`. Bare `pouvoir`/`devoir` can be nouns, so those two
 modal readings additionally require an adjacent known infinitive complement.
 
-`Je vais manger`, `J’ai entendu chanter`, preceding objects/clitics, negation, intervening
-adverbs, quotations, code, tables, legacy `--` dialogue prefixes and detected metalinguistic
+`Je vais manger`, `J’ai entendu chanter`, preceding objects/clitics, omitted/bare negation, unknown or excessive
+intervening words, quotations, code, tables, legacy `--` dialogue prefixes and detected metalinguistic
 examples remain outside this rule. It does not choose an auxiliary or resolve participle
 agreement. The [OQLF distinction between infinitive and participle](https://vitrinelinguistique.oqlf.gouv.qc.ca/21614/la-grammaire/le-verbe/modes/infinitif/distinction-entre-linfinitif-et-le-participe-passe)
 explains why replacing every infinitive after a verb would be incorrect.
 
-`french_grammar.rs` and `french_participles.rs` separate original errors, correct text and
+`french_grammar.rs`, `french_participles.rs` and `french_negative_participles.rs` separate original errors, correct text and
 ambiguous/unsupported constructions. Unsupported errors do not count as correct-text precision
 data. Every targeted error checks exact byte ranges and suggestions, then verifies stable
 corrected text. An additional table checks 3,300 subject/tense/verb combinations and their
 3,300 corrected counterparts. The explicit real-data test exercises the whole grammar path for
-6,057 supported simple infinitives in the defined first-person context (an infinitive complement
-is supplied for the ambiguous modals), including canonical suggested forms and stable results.
+6,057 supported simple infinitives in three defined first-person contexts (positive, explicit
+negative and intervening adverb: 18,171 constructions; an infinitive complement is supplied for
+the ambiguous modals), including canonical suggested forms and stable results.
 These are synthetic/data coverage checks, not a real-world precision estimate.
 
 An optional `french_prose` test uses external French prose, never bundled in this repository.
-The recorded local run used 9,486 original paragraphs from four books, with 42 auxiliary
+The recorded local run used 9,486 original paragraphs from four books, with 51 auxiliary
 beginnings, plus 2,889 separately labelled variants replacing only a leading `--` by `— `,
-with 47 auxiliary beginnings. There were 79 unquoted eligible beginnings and no new participle
+with 60 auxiliary beginnings. There were 99 unquoted auxiliary beginnings and no new participle
 alerts. Counts include overlapping variants and are a smoke check, not statistical precision
 or broad grammar coverage. See [source metadata and normalization](french-prose-sources.json).
 Input format is UTF-8 `source<TAB>paragraph` per line, bounded to 8 MB; set
@@ -91,7 +107,7 @@ cargo test --locked -p wordcraft-proof --test french_prose -- --ignored --nocapt
 ```
 
 Engine integration exercises F7, Change, Undo and **Mark grammar errors as you type** off/on.
-It also fixes `Je avais écrire` in two steps, verifying recomputed UTF-8 ranges after elision
+It also fixes `Je avais déjà écrire` in two steps, verifying recomputed UTF-8 ranges after elision
 and two undos restoring the original text. Suggestions never rewrite the document automatically.
 
 ## Personal-cleft agreement and optional morphology
@@ -232,6 +248,7 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 | 2026-10-20 | minor | French dictionary replacement clears stale load errors only after successful parsing; Canadian French keeps its own Options label |
 | 2026-10-20 | trivial | French hyphenation pattern asset included in both workflow path filters so pattern-only changes run the proofing regressions |
 | 2026-10-20 | minor | Frozen pre-French affix outputs and legacy compact dictionaries agree; French CI pins Rust 1.98.1 and checks formatting on all three desktop systems |
+| 2026-10-20 | minor | French participles through explicit negation and 19 common adverbs; three-word bound, idiom/clitic guards, exact-range stable corrections and expanded real-data/prose checks |
 | 2026-10-20 | minor | French irregular participles: five avoir tenses, 66 original fallback pairs, bounded optional lexical coverage and separate prose smoke gate; no general agreement claim |
 | 2026-10-20 | minor | Explicit desktop French verb-form data installation: pinned MPL-2.0 archive, bounded ZIP members, atomic activation, retained manual files, shared installation interlock and live reload; no general-grammar or readiness-estimate claim |
 | 2026-10-20 | minor | Personal-cleft agreement, ambiguity-aware optional MPL-2.0 finite morphology, bounded reader, fallback/reload diagnostics and explicit pinned real-data coverage |
