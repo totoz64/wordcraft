@@ -786,8 +786,13 @@ pub fn check_text_with(text: &str, spans: &[(Range<usize>, ProofLang)], opts: &O
     }
     langs.sort();
     langs.dedup();
+    let mut accepted_french_subject_ranges = Vec::new();
     for lang in langs {
-        let found = grammar_in(text, lang, !list_item);
+        let found = if matches!(lang, ProofLang::Fr | ProofLang::FrCa) {
+            fr::grammar::check_in_preserving_conflicts(text, lang)
+        } else {
+            grammar_in(text, lang, !list_item)
+        };
         for issue in found.into_iter().filter(|i| lang_at(i.start) == lang) {
             if matches!(lang, ProofLang::Fr | ProofLang::FrCa) && fr::grammar::is_personal_subject_issue(&issue) {
                 // The full grammatical context must belong to one French region.
@@ -799,11 +804,20 @@ pub fn check_text_with(text: &str, spans: &[(Range<usize>, ProofLang)], opts: &O
                 if !merged.iter().any(|(range, language)| *language == lang && range.start <= context.start && context.end <= range.end) {
                     continue;
                 }
+                accepted_french_subject_ranges.push((lang, issue.start..issue.end));
                 v.retain(|old| old.kind != IssueKind::Spelling || old.lang != lang || old.start < issue.start || old.end > issue.end);
             }
             v.push(issue);
         }
     }
+    // Remove an elision only when the conflicting French correction survived all
+    // language/context checks. Its spelling precedence still uses the replaced prefix.
+    v.retain(|issue| {
+        !(issue.kind == IssueKind::Grammar
+            && matches!(issue.lang, ProofLang::Fr | ProofLang::FrCa)
+            && issue.message.starts_with("Élision")
+            && accepted_french_subject_ranges.iter().any(|(lang, range)| *lang == issue.lang && range.start < issue.end && issue.start < range.end))
+    });
     v.sort_by_key(|i| (i.start, i.end));
     v
 }

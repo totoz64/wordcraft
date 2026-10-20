@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French reflexive auxiliary correction); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** trivial (French suggestion priority after language filtering); previously minor (French reflexive auxiliary correction); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
 
 ## Shared-engine compatibility and reproducible CI
 
@@ -330,6 +330,7 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-20 | trivial | French elision conflicts are resolved only after grammatical context passes exact-language filtering; a rejected reflexive auxiliary retains independent spelling and typography |
 | 2026-10-20 | minor | French reflexive auxiliary correction with recorded participles, bounded clitics/negation, exact-language context and retained participle endings; no general participle agreement |
 | 2026-10-20 | minor | French dictionary replacement clears stale load errors only after successful parsing; Canadian French keeps its own Options label |
 | 2026-10-20 | trivial | French hyphenation pattern asset included in both workflow path filters so pattern-only changes run the proofing regressions |
@@ -379,6 +380,11 @@ French region. A foreign or other-region subject, negative word, adverb or parti
 therefore cannot determine the correction. Only the smaller replaced prefix suppresses
 overlapping spelling guesses; spelling on the unchanged participle remains visible.
 Spelling-only mode retains its own marks.
+A conflicting elision is suppressed only after the subject/auxiliary correction passes
+that language check. If a foreign or other-region participle rejects the auxiliary,
+the independent French elision and prefix spelling marks remain available. A small
+process-isolated synthetic regression runs without optional external data; the real
+lexicon gate checks the same precedence in both French regions.
 
 Original regressions exercise seven lexical mood/tense mappings, recorded participle
 genders/numbers, incomplete and ambiguous data, excessive word bounds, both regions,

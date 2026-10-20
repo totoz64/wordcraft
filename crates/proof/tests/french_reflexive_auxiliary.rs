@@ -108,6 +108,21 @@ fn real_auxiliary_context_respects_languages_options_and_spelling_priority() {
     // needs only real morphology, independently of installed spelling files.
     fr::install_dictionary("SET UTF-8\n", "2\nJe\net\n").unwrap();
     for lang in [ProofLang::Fr, ProofLang::FrCa] {
+        let text = "Ils se ont trompés.";
+        let full = check_text(text, &[(0..text.len(), lang)]);
+        assert!(full.iter().any(|issue| issue.message == MESSAGE));
+        assert!(!full.iter().any(|issue| issue.message.starts_with("Élision")), "accepted auxiliary keeps precedence: {full:?}");
+        let split = text.find("trompés").unwrap();
+        for foreign in [ProofLang::Other, ProofLang::En, if lang == ProofLang::Fr { ProofLang::FrCa } else { ProofLang::Fr }] {
+            let mixed = check_text(text, &[(0..split, lang), (split..text.len(), foreign)]);
+            assert!(!mixed.iter().any(|issue| issue.message == MESSAGE), "foreign participle cannot select an auxiliary: {mixed:?}");
+            let elision = mixed.iter().find(|issue| issue.message.starts_with("Élision")).expect("the independent French elision remains");
+            assert_eq!(elision.lang, lang);
+            assert_eq!(&text[elision.start..elision.end], "se ont");
+            assert_eq!(elision.suggestions, ["s’ont"]);
+            // A rejected auxiliary cannot consume spelling marks on its prefix.
+            assert!(mixed.iter().any(|issue| issue.kind == IssueKind::Spelling && &text[issue.start..issue.end] == "ont"));
+        }
         let text = "Je m'ai trompée et xyzxyz.";
         let spans = [(0..text.len(), lang)];
         let spelling = check_text_with(text, &spans, &Options::default(), false, false);
