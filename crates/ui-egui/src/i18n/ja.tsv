@@ -2298,3 +2298,13 @@
 	Dictionary installation failed: {reason}	辞書のインストールに失敗しました: {reason}
 	The dictionary download stopped. Please try again.	辞書のダウンロードが中断されました。もう一度お試しください。
 	The dictionaries folder changed during installation. Please try again.	インストール中に辞書フォルダーが変更されました。もう一度お試しください。
+
+# Optional French finite-verb data installation
+	Add French verb forms	フランス語の活用形を追加
+	The French verb forms are ready.	フランス語の活用形を利用できます。
+	The French grammar data download stopped. Please try again.	フランス語の文法データのダウンロードが停止しました。もう一度お試しください。
+	French grammar data installation failed: {reason}	フランス語の文法データをインストールできませんでした: {reason}
+	A French proofing installation is already in progress.	フランス語の校正ツールをインストール中です。
+	French grammar data	フランス語の文法データ
+	More verbs for French agreement checks (12 MB download).	フランス語の一致を確認する動詞を追加します（12 MB のダウンロード）。
+	Adding French verb forms…	フランス語の活用形を追加中…

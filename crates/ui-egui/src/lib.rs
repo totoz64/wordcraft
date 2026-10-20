@@ -99,6 +99,8 @@ pub use file_dialogs::{FileDialogAnswer, FileDialogRequest, open_filters};
 pub struct Services {
     /// Desktop: explicitly download and install the French dictionary on a worker.
     pub install_french_dictionary: Option<dictionary_setup::Install>,
+    /// Desktop: explicitly install optional French finite-verb data on a worker.
+    pub install_french_grammar_data: Option<dictionary_setup::Install>,
     /// Desktop: discover configured printers on a worker.
     pub printers: Option<printing::Discover>,
     /// Desktop: submit the PDF with the chosen settings on a worker.
@@ -612,6 +614,7 @@ pub struct WordApp {
     /// The file dialog the host is showing, and what its answer is for ([`file_dialogs`]).
     file_dialog: Option<file_dialogs::PendingDialog>,
     pub(crate) dictionary_setup: dictionary_setup::State,
+    pub(crate) grammar_data_setup: dictionary_setup::State,
     /// The built-in file browser, when it is open, and the folder it showed last (#576).
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) file_browser: file_browser::State,
@@ -719,6 +722,7 @@ impl WordApp {
             dialog_pick: None,
             file_dialog: None,
             dictionary_setup: Default::default(),
+            grammar_data_setup: Default::default(),
             #[cfg(not(target_arch = "wasm32"))]
             file_browser: file_browser::State::default(),
             info_editing: None,
@@ -1675,6 +1679,7 @@ impl WordApp {
             // Native printing submits the selected queue on a worker; the browser owns its dialog.
             "ui.printSettings" => return Some(printing::settings(&mut self.printing, p, self.services.printers.as_ref())),
             "ui.frenchDictionary" => return Some(dictionary_setup::command(self, p)),
+            "ui.frenchGrammarData" => return Some(dictionary_setup::grammar_command(self, p)),
             "ui.print" | "ui.printSubmit" => return Some(self.print_to_system(p)),
             // File › Options › General › Make WordCraft the default… changes the user's system
             // default apps (Linux) or opens system settings (Windows), so only a click on that
@@ -2623,6 +2628,7 @@ pub(crate) fn works_without_document(id: &str) -> bool {
             | "ui.fileBrowser"
             | "ui.makeDefaultApp"
             | "ui.frenchDictionary"
+            | "ui.frenchGrammarData"
             | "ui.discord"
             | "ui.caretAnimation"
             | "ui.startScreen"

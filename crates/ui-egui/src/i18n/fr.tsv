@@ -2710,3 +2710,13 @@ template	Letter	Lettre
 	Dictionary installation failed: {reason}	Échec de l’installation du dictionnaire : {reason}
 	The dictionary download stopped. Please try again.	Le téléchargement du dictionnaire s’est arrêté. Réessayez.
 	The dictionaries folder changed during installation. Please try again.	Le dossier des dictionnaires a changé pendant l’installation. Réessayez.
+
+# Optional French finite-verb data installation
+	Add French verb forms	Ajouter les formes verbales françaises
+	The French verb forms are ready.	Les formes verbales françaises sont prêtes.
+	The French grammar data download stopped. Please try again.	Le téléchargement des données de grammaire française s’est arrêté. Réessayez.
+	French grammar data installation failed: {reason}	Échec de l’installation des données de grammaire française : {reason}
+	A French proofing installation is already in progress.	Une installation des outils de correction française est déjà en cours.
+	French grammar data	Données de grammaire française
+	More verbs for French agreement checks (12 MB download).	Plus de verbes pour vérifier les accords en français (téléchargement de 12 Mo).
+	Adding French verb forms…	Ajout des formes verbales françaises…

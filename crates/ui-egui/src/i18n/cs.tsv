@@ -2701,3 +2701,13 @@ preview	Title	Ukázka
 	Dictionary installation failed: {reason}	Instalace slovníku se nezdařila: {reason}
 	The dictionary download stopped. Please try again.	Stahování slovníku bylo přerušeno. Zkuste to znovu.
 	The dictionaries folder changed during installation. Please try again.	Složka slovníků se během instalace změnila. Zkuste to znovu.
+
+# Optional French finite-verb data installation
+	Add French verb forms	Přidat francouzské slovesné tvary
+	The French verb forms are ready.	Francouzské slovesné tvary jsou připravené.
+	The French grammar data download stopped. Please try again.	Stahování francouzských gramatických dat se zastavilo. Zkuste to znovu.
+	French grammar data installation failed: {reason}	Instalace francouzských gramatických dat se nezdařila: {reason}
+	A French proofing installation is already in progress.	Instalace francouzských nástrojů kontroly už probíhá.
+	French grammar data	Francouzská gramatická data
+	More verbs for French agreement checks (12 MB download).	Více sloves pro kontrolu shody ve francouzštině (stažení 12 MB).
+	Adding French verb forms…	Přidávání francouzských slovesných tvarů…

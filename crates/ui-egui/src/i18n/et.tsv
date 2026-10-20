@@ -2332,3 +2332,13 @@
 	Dictionary installation failed: {reason}	Sõnastiku paigaldamine ebaõnnestus: {reason}
 	The dictionary download stopped. Please try again.	Sõnastiku allalaadimine katkes. Proovi uuesti.
 	The dictionaries folder changed during installation. Please try again.	Sõnastike kaust muutus paigaldamise ajal. Proovi uuesti.
+
+# Optional French finite-verb data installation
+	Add French verb forms	Lisa prantsuse verbivormid
+	The French verb forms are ready.	Prantsuse verbivormid on valmis.
+	The French grammar data download stopped. Please try again.	Prantsuse grammatikaandmete allalaadimine peatus. Proovi uuesti.
+	French grammar data installation failed: {reason}	Prantsuse grammatikaandmete paigaldamine nurjus: {reason}
+	A French proofing installation is already in progress.	Prantsuse keele kontrollivahendite paigaldamine juba käib.
+	French grammar data	Prantsuse grammatikaandmed
+	More verbs for French agreement checks (12 MB download).	Rohkem verbe prantsuse keele ühildumise kontrolliks (12 MB allalaadimine).
+	Adding French verb forms…	Prantsuse verbivormide lisamine…

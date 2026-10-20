@@ -2310,3 +2310,13 @@
 	Dictionary installation failed: {reason}	Не вдалося встановити словник: {reason}
 	The dictionary download stopped. Please try again.	Завантаження словника перервано. Спробуйте ще раз.
 	The dictionaries folder changed during installation. Please try again.	Папка словників змінилася під час установлення. Спробуйте ще раз.
+
+# Optional French finite-verb data installation
+	Add French verb forms	Додати французькі дієслівні форми
+	The French verb forms are ready.	Французькі дієслівні форми готові.
+	The French grammar data download stopped. Please try again.	Завантаження французьких граматичних даних зупинено. Спробуйте ще раз.
+	French grammar data installation failed: {reason}	Не вдалося встановити французькі граматичні дані: {reason}
+	A French proofing installation is already in progress.	Встановлення французьких засобів перевірки вже триває.
+	French grammar data	Французькі граматичні дані
+	More verbs for French agreement checks (12 MB download).	Більше дієслів для перевірки узгодження у французькій (завантаження 12 МБ).
+	Adding French verb forms…	Додавання французьких дієслівних форм…

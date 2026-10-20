@@ -25,6 +25,7 @@ fn optional_file_failure_fallback_precedence_and_reload() {
     std::fs::write(&installed, &data).unwrap();
     wordcraft_proof::set_dictionaries_folder(Some(folder.path().to_owned()));
     assert_eq!(morphology::installed_path(), Some(installed.clone()));
+    assert_eq!(morphology::data_status(), morphology::DataStatus::Ready { path: installed.clone(), analyses: 2 });
     assert_eq!(agreement("C’est nous qui manges.")[0].suggestions, ["mangeons"]);
     assert!(morphology::load_error().is_none());
     std::fs::write(&manual, "invalid file").unwrap();
@@ -33,10 +34,12 @@ fn optional_file_failure_fallback_precedence_and_reload() {
     assert_eq!(agreement("C’est moi qui est ici.")[0].suggestions, ["suis"], "original builtin fallback remains available");
     assert!(agreement("C’est nous qui manges.").is_empty(), "do not invent unknown forms");
     assert_eq!(morphology::load_error().unwrap().0, manual);
+    assert!(matches!(morphology::data_status(), morphology::DataStatus::Unreadable { path, .. } if path == manual));
     std::fs::write(&manual, data).unwrap();
     wordcraft_proof::set_dictionaries_folder(Some(folder.path().to_owned()));
     assert_eq!(agreement("C’est nous qui manges.")[0].suggestions, ["mangeons"]);
     assert!(morphology::load_error().is_none(), "a successful retry clears the diagnostic");
+    assert_eq!(morphology::data_status(), morphology::DataStatus::Ready { path: manual, analyses: 2 });
     wordcraft_proof::set_dictionaries_folder(None);
 }
 

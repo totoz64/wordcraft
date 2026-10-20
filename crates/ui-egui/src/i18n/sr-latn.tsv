@@ -2308,3 +2308,13 @@
 	Dictionary installation failed: {reason}	Instalacija rečnika nije uspela: {reason}
 	The dictionary download stopped. Please try again.	Preuzimanje rečnika je prekinuto. Pokušajte ponovo.
 	The dictionaries folder changed during installation. Please try again.	Fascikla rečnika je promenjena tokom instalacije. Pokušajte ponovo.
+
+# Optional French finite-verb data installation
+	Add French verb forms	Dodaj francuske glagolske oblike
+	The French verb forms are ready.	Francuski glagolski oblici su spremni.
+	The French grammar data download stopped. Please try again.	Preuzimanje francuskih gramatičkih podataka je zaustavljeno. Pokušajte ponovo.
+	French grammar data installation failed: {reason}	Instalacija francuskih gramatičkih podataka nije uspela: {reason}
+	A French proofing installation is already in progress.	Instalacija francuskih alata za proveru je već u toku.
+	French grammar data	Francuski gramatički podaci
+	More verbs for French agreement checks (12 MB download).	Više glagola za proveru slaganja na francuskom (preuzimanje od 12 MB).
+	Adding French verb forms…	Dodavanje francuskih glagolskih oblika…

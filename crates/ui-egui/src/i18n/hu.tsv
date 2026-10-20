@@ -2705,3 +2705,13 @@
 	Dictionary installation failed: {reason}	A szótár telepítése sikertelen: {reason}
 	The dictionary download stopped. Please try again.	A szótár letöltése megszakadt. Próbálja újra.
 	The dictionaries folder changed during installation. Please try again.	A szótárak mappája megváltozott a telepítés közben. Próbálja újra.
+
+# Optional French finite-verb data installation
+	Add French verb forms	Francia igealakok hozzáadása
+	The French verb forms are ready.	A francia igealakok készen állnak.
+	The French grammar data download stopped. Please try again.	A francia nyelvtani adatok letöltése leállt. Próbálja újra.
+	French grammar data installation failed: {reason}	A francia nyelvtani adatok telepítése sikertelen: {reason}
+	A French proofing installation is already in progress.	Egy francia nyelvi ellenőrző telepítése már folyamatban van.
+	French grammar data	Francia nyelvtani adatok
+	More verbs for French agreement checks (12 MB download).	Több ige a francia egyeztetés ellenőrzéséhez (12 MB letöltés).
+	Adding French verb forms…	Francia igealakok hozzáadása…

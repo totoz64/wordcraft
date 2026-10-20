@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (explicit French verb-form data installation; baseline #1660)
 
 ## Baseline for review
 
@@ -71,11 +71,34 @@ downloads. All finite readings are retained: `C’est toi qui suis cette piste`
 and `C’est toi qui sommes le débiteur de payer` must not be flagged merely because
 `suis` and `sommes` also have être readings.
 
-For additional verbs and seven finite tenses/moods, place the unchanged
+For additional verbs and seven finite tenses/moods, desktop users can open
+**File › Options › Proofing** and click **Add French verb forms** (French:
+**Ajouter les formes verbales françaises**). The roughly 12 MB download installs
+the external text and its licence/readme in a separate versioned subdirectory,
+then reloads the selected folder immediately. No document is edited and no restart is needed.
+An existing complete installation is verified and reused without another download.
+The grammar and spelling installers cannot run at the same time; this prevents
+competing folder activation. Startup and status inspection never download data.
+The command `ui.frenchGrammarData` takes `{install?: bool}`; inspection without
+`install: true` only reports availability, busy/ready state and errors. The web
+has no native installation host and does not show the download button.
+Readiness is based on the validated data actually loaded, so it remains visible after
+restart. The command also reports `analyses` and `dataError`; an unreadable file is
+diagnosed even without starting an installation. Selecting another folder reloads this state.
+
+The original native host checks the pinned ZIP hash before decompression and then
+checks the text and README hashes. Only those two named, size-bounded members are read,
+without extracting arbitrary paths. A complete parsed index is staged before atomic
+publication. Interrupted downloads, unreadable manual files and incomplete or corrupt
+managed installations are reported and kept unchanged; retry is possible after the
+underlying problem is resolved. Changing the selected folder during installation keeps
+the newer preference and asks for a retry. Installation progress and errors are localized.
+
+Alternatively, place the unchanged
 `lexique-grammalecte-fr-v7.7.txt` beside the spelling dictionaries in the configured
 **Dictionaries folder**, or in its `wordcraft-french-grammar-7.7-bdccf206` subdirectory.
 The direct file takes precedence. Reload the folder setting or restart after changing it.
-This optional data is **not installed by the spelling-dictionary button**, and is never
+This optional data uses its own button, separate from the spelling dictionary. It is never
 bundled in the repository or application.
 
 The [published 7.7 lexicon](https://www.grammalecte.net/dic/lexique-grammalecte-fr-v7.7.zip)
@@ -163,6 +186,7 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-20 | minor | Explicit desktop French verb-form data installation: pinned MPL-2.0 archive, bounded ZIP members, atomic activation, retained manual files, shared installation interlock and live reload; no general-grammar or readiness-estimate claim |
 | 2026-10-20 | minor | Personal-cleft agreement, ambiguity-aware optional MPL-2.0 finite morphology, bounded reader, fallback/reload diagnostics and explicit pinned real-data coverage |
 | 2026-10-20 | minor | Bounded avoir + first-group participle suggestions, si il/ils elision, original error/quiet/unsupported regressions and command-level apply/undo tests |
 | 2026-10-20 | minor | Explicit desktop download button, verified atomic installation, live activation and saved folder; existing dictionaries retained |

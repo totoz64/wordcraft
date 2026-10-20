@@ -2724,3 +2724,13 @@ preview	Title	Titel
 	Dictionary installation failed: {reason}	Det gick inte att installera ordboken: {reason}
 	The dictionary download stopped. Please try again.	Hämtningen av ordboken avbröts. Försök igen.
 	The dictionaries folder changed during installation. Please try again.	Ordboksmappen ändrades under installationen. Försök igen.
+
+# Optional French finite-verb data installation
+	Add French verb forms	Lägg till franska verbformer
+	The French verb forms are ready.	De franska verbformerna är klara.
+	The French grammar data download stopped. Please try again.	Hämtningen av franska grammatikdata avbröts. Försök igen.
+	French grammar data installation failed: {reason}	Installationen av franska grammatikdata misslyckades: {reason}
+	A French proofing installation is already in progress.	En installation av franska språkverktyg pågår redan.
+	French grammar data	Franska grammatikdata
+	More verbs for French agreement checks (12 MB download).	Fler verb för franska kongruenskontroller (12 MB hämtning).
+	Adding French verb forms…	Lägger till franska verbformer…

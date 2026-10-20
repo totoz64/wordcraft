@@ -2718,3 +2718,13 @@ preview	Title	Esempio
 	Dictionary installation failed: {reason}	Installazione del dizionario non riuscita: {reason}
 	The dictionary download stopped. Please try again.	Il download del dizionario si è interrotto. Riprova.
 	The dictionaries folder changed during installation. Please try again.	La cartella dei dizionari è cambiata durante l’installazione. Riprova.
+
+# Optional French finite-verb data installation
+	Add French verb forms	Aggiungi forme verbali francesi
+	The French verb forms are ready.	Le forme verbali francesi sono pronte.
+	The French grammar data download stopped. Please try again.	Il download dei dati grammaticali francesi si è interrotto. Riprova.
+	French grammar data installation failed: {reason}	Installazione dei dati grammaticali francesi non riuscita: {reason}
+	A French proofing installation is already in progress.	È già in corso un’installazione degli strumenti di correzione francese.
+	French grammar data	Dati grammaticali francesi
+	More verbs for French agreement checks (12 MB download).	Più verbi per verificare la concordanza in francese (download di 12 MB).
+	Adding French verb forms…	Aggiunta delle forme verbali francesi…

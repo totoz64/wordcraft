@@ -2706,3 +2706,13 @@ preview	Title	Örnek
 	Dictionary installation failed: {reason}	Sözlük yüklenemedi: {reason}
 	The dictionary download stopped. Please try again.	Sözlük indirme işlemi durdu. Lütfen yeniden deneyin.
 	The dictionaries folder changed during installation. Please try again.	Yükleme sırasında sözlük klasörü değişti. Lütfen yeniden deneyin.
+
+# Optional French finite-verb data installation
+	Add French verb forms	Fransızca fiil biçimlerini ekle
+	The French verb forms are ready.	Fransızca fiil biçimleri hazır.
+	The French grammar data download stopped. Please try again.	Fransızca dil bilgisi verilerinin indirilmesi durdu. Lütfen yeniden deneyin.
+	French grammar data installation failed: {reason}	Fransızca dil bilgisi verileri yüklenemedi: {reason}
+	A French proofing installation is already in progress.	Fransızca yazım denetimi araçlarının yüklenmesi zaten sürüyor.
+	French grammar data	Fransızca dil bilgisi verileri
+	More verbs for French agreement checks (12 MB download).	Fransızca uyum denetimi için daha fazla fiil (12 MB indirme).
+	Adding French verb forms…	Fransızca fiil biçimleri ekleniyor…

@@ -2707,3 +2707,13 @@ preview	Title	Пример
 	Dictionary installation failed: {reason}	Не удалось установить словарь: {reason}
 	The dictionary download stopped. Please try again.	Загрузка словаря прервана. Повторите попытку.
 	The dictionaries folder changed during installation. Please try again.	Папка словарей изменилась во время установки. Повторите попытку.
+
+# Optional French finite-verb data installation
+	Add French verb forms	Добавить французские глагольные формы
+	The French verb forms are ready.	Французские глагольные формы готовы.
+	The French grammar data download stopped. Please try again.	Загрузка французских грамматических данных остановлена. Повторите попытку.
+	French grammar data installation failed: {reason}	Не удалось установить французские грамматические данные: {reason}
+	A French proofing installation is already in progress.	Установка французских средств проверки уже выполняется.
+	French grammar data	Французские грамматические данные
+	More verbs for French agreement checks (12 MB download).	Больше глаголов для проверки согласования во французском (загрузка 12 МБ).
+	Adding French verb forms…	Добавление французских глагольных форм…

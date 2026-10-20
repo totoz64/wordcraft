@@ -2310,3 +2310,13 @@
 	Dictionary installation failed: {reason}	Falha na instalação do dicionário: {reason}
 	The dictionary download stopped. Please try again.	O download do dicionário foi interrompido. Tente novamente.
 	The dictionaries folder changed during installation. Please try again.	A pasta de dicionários mudou durante a instalação. Tente novamente.
+
+# Optional French finite-verb data installation
+	Add French verb forms	Adicionar formas verbais em francês
+	The French verb forms are ready.	As formas verbais em francês estão prontas.
+	The French grammar data download stopped. Please try again.	O download dos dados gramaticais em francês foi interrompido. Tente novamente.
+	French grammar data installation failed: {reason}	Falha na instalação dos dados gramaticais em francês: {reason}
+	A French proofing installation is already in progress.	Uma instalação das ferramentas de revisão em francês já está em andamento.
+	French grammar data	Dados gramaticais em francês
+	More verbs for French agreement checks (12 MB download).	Mais verbos para verificar a concordância em francês (download de 12 MB).
+	Adding French verb forms…	Adicionando formas verbais em francês…
