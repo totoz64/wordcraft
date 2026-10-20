@@ -145,10 +145,11 @@ fn external_prose_reports_actual_auxiliary_contexts_and_new_alerts() {
                 unquoted += 1;
             }
         }
-        for issue in grammar::check_in(text, ProofLang::Fr)
-            .into_iter()
-            .filter(|i| i.message.starts_with("Participe passé attendu après avoir") || i.message == "Accord du verbe avec le pronom sujet")
-        {
+        for issue in grammar::check_in(text, ProofLang::Fr).into_iter().filter(|i| {
+            i.message.starts_with("Participe passé attendu après avoir")
+                || i.message == "Accord du verbe avec le pronom sujet"
+                || i.message == "Auxiliaire être avec un verbe pronominal"
+        }) {
             assert!(text.get(issue.start..issue.end).is_some());
             alerts.push(format!("{source} paragraph{index}: {text} → {:?}", issue.suggestions));
         }

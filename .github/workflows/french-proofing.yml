@@ -11,6 +11,7 @@ on:
       - 'crates/engine/src/cmd/review.rs'
       - 'crates/engine/src/tests.rs'
       - 'crates/engine/tests/french_grammar.rs'
+      - 'crates/engine/tests/french_reflexive_auxiliary.rs'
       - 'docs/french-proofing.md'
       - 'docs/spelling-dictionaries.md'
       - '.github/workflows/french-proofing.yml'
@@ -25,6 +26,7 @@ on:
       - 'crates/engine/src/cmd/review.rs'
       - 'crates/engine/src/tests.rs'
       - 'crates/engine/tests/french_grammar.rs'
+      - 'crates/engine/tests/french_reflexive_auxiliary.rs'
       - 'docs/french-proofing.md'
       - 'docs/spelling-dictionaries.md'
       - '.github/workflows/french-proofing.yml'
@@ -146,6 +148,11 @@ jobs:
           WORDCRAFT_FRENCH_LEXICON: ${{ runner.temp }}/wordcraft-french-morphology/lexique-grammalecte-fr-v7.7.txt
         run: cargo test --locked -p wordcraft-proof --test french_clitic_agreement -- --ignored
 
+      - name: Required real French reflexive auxiliary gate
+        env:
+          WORDCRAFT_DICTIONARIES: ${{ runner.temp }}/wordcraft-french-morphology
+        run: cargo test --locked -p wordcraft-proof --test french_reflexive_auxiliary -- --ignored
+
       - name: Required real French dictionary gate
         env:
           WORDCRAFT_DICTIONARIES: ${{ runner.temp }}/wordcraft-french-dictionary
@@ -156,6 +163,9 @@ jobs:
 
       - name: Grammar suggestions, disable and undo
         run: cargo test --locked -p wordcraft-engine --test french_grammar
+
+      - name: Reflexive auxiliary Review, marks and undo
+        run: cargo test --locked -p wordcraft-engine --test french_reflexive_auxiliary
 
       - name: Desktop installation and activation
         env:
