@@ -1,6 +1,17 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (personal-cleft agreement and optional finite morphology; baseline based on #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (reviewed French baseline: historical compatibility, pinned CI and French pattern triggers); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660)
+
+## Shared-engine compatibility and reproducible CI
+
+The [historical affix compatibility gate](affix-compatibility.md) compares seven
+original non-French fixtures against actual upstream e6c5a70 outputs and old
+WCAFF1 bytes. The full proofing suite includes these tests. The French workflow
+pins both its action revision and Rust 1.98.1, prints the compiler version, and
+runs `cargo fmt --all -- --check` on Linux, Windows and macOS. Real dictionary
+inputs retain their revision and byte checksums. Changes to
+`assets/hyphenation/fr.pat` trigger this workflow on pull requests and main pushes,
+including changes to that pattern file alone.
 
 ## Baseline for review
 
@@ -153,6 +164,8 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-20 | trivial | French hyphenation pattern asset included in both workflow path filters so pattern-only changes run the proofing regressions |
+| 2026-10-20 | minor | Frozen pre-French affix outputs and legacy compact dictionaries agree; French CI pins Rust 1.98.1 and checks formatting on all three desktop systems |
 | 2026-10-20 | minor | Personal-cleft agreement, ambiguity-aware optional MPL-2.0 finite morphology, bounded reader, fallback/reload diagnostics and explicit pinned real-data coverage |
 | 2026-10-20 | minor | Bounded avoir + first-group participle suggestions, si il/ils elision, original error/quiet/unsupported regressions and command-level apply/undo tests |
 | 2026-10-20 | major | Integration checklist, explicit real-dictionary gate, feedback format and staged French follow-ups |

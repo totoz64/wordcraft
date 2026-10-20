@@ -5,6 +5,7 @@ on:
     paths:
       - 'Cargo*'
       - 'crates/proof/**'
+      - 'assets/hyphenation/fr.pat'
       - 'crates/engine/src/cmd/review.rs'
       - 'crates/engine/src/tests.rs'
       - 'crates/engine/tests/french_grammar.rs'
@@ -16,6 +17,7 @@ on:
     paths:
       - 'Cargo*'
       - 'crates/proof/**'
+      - 'assets/hyphenation/fr.pat'
       - 'crates/engine/src/cmd/review.rs'
       - 'crates/engine/src/tests.rs'
       - 'crates/engine/tests/french_grammar.rs'
@@ -45,7 +47,15 @@ jobs:
       CARGO_INCREMENTAL: '0'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: '1.98.1'
+          components: rustfmt
+      - name: Record pinned compiler and check formatting
+        run: |
+          rustc --version --verbose
+          cargo --version
+          cargo fmt --all -- --check
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -75,7 +85,7 @@ jobs:
                   raise RuntimeError(f"Dictionary checksum mismatch: {name}")
               (directory / name).write_bytes(data)
 
-      - name: Synthetic proofing regression suite
+      - name: Synthetic proofing and non-French compatibility regressions
         run: cargo test --locked -p wordcraft-proof
 
       # Optional linguistic data only (MPL-2.0), never Grammalecte's GPL grammar code.
