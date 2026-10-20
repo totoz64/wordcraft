@@ -77,6 +77,7 @@ fn load_installed() -> AffixDict {
 pub fn install_dictionary(aff: &str, dic: &str) -> Result<(), String> {
     let d = AffixDict::from_hunspell(aff, dic, &[])?;
     *DICT.write().unwrap_or_else(|e| e.into_inner()) = Some(Arc::new(d));
+    crate::hunspell::clear_load_error(NAMES[0]);
     Ok(())
 }
 
