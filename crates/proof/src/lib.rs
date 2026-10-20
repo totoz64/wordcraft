@@ -561,13 +561,25 @@ fn damerau(a: &[char], b: &str) -> usize {
     prev.get(m).copied().unwrap_or(9)
 }
 
+/// Whether a character is a Unicode mark, including marks that are also alphabetic.
+/// The tokenizer only attaches these to a preceding letter, without changing source bytes.
+pub(crate) fn is_combining_mark(c: char) -> bool {
+    use unicode_general_category::{GeneralCategory, get_general_category};
+    !c.is_ascii()
+        && matches!(get_general_category(c), GeneralCategory::NonspacingMark | GeneralCategory::SpacingMark | GeneralCategory::EnclosingMark)
+}
+
 /// Words in `text`: (byte start, byte end).
 pub fn words(text: &str) -> Vec<(usize, usize)> {
     let mut out = Vec::new();
     let mut start: Option<usize> = None;
-    let is_w = |c: char| c.is_alphanumeric() || c == '\'' || c == '’' || c == '-';
+    let mut after_letter = false;
     for (i, c) in text.char_indices() {
-        match (start, is_w(c)) {
+        // Some marks have Alphabetic too: classify marks before the ordinary word path.
+        let mark = is_combining_mark(c);
+        let is_word = if mark { after_letter } else { c.is_alphanumeric() || c == '\'' || c == '’' || c == '-' };
+        after_letter = if mark { after_letter } else { c.is_alphabetic() && !c.is_numeric() };
+        match (start, is_word) {
             (None, true) => start = Some(i),
             (Some(s), false) => {
                 out.push((s, i));
