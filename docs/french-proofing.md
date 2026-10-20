@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** trivial (preserve explicit written-pronoun examples); previously trivial (French suggestion priority after language filtering); previously minor (French reflexive auxiliary correction); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660); previously minor (French personal-subject agreement; baseline #1660); previously trivial (preserve explicit written-pronoun examples); previously trivial (French suggestion priority after language filtering); previously minor (French reflexive auxiliary correction); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
 
 ## Shared-engine compatibility and reproducible CI
 
@@ -31,6 +31,10 @@ The baseline includes spelling, accent and apostrophe suggestions, conservative 
 and grammar, and hyphenation. `fr-CA` shares spelling and uses Quebec punctuation conventions.
 New documents under the French interface take the French system region. Missing and unreadable
 dictionaries are reported through the existing status-bar and Options diagnostics.
+
+Document proofing reads the Canadian region only in its region position, after an optional
+script (`fr-CA`, `fr-Latn-CA`). Extension data such as `fr-u-ca-gregory` and `fr-x-ca`
+does not select Quebec typography.
 
 Subject–verb agreement is limited to initial personal subjects and the personal-cleft cases
 below. Noun-phrase/later-clause agreement, gender/number agreement and contextual homophones
@@ -330,6 +334,8 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-20 | minor | Attached Unicode marks keep their original spelling ranges; French compound fallback rejects empty internal components while preserving explicit dictionary entries |
+| 2026-10-20 | minor | French proofing reads Canada only from the region after the language/optional script; Unicode calendar and private-use extension subtags do not select Quebec typography; production-parser regressions |
 | 2026-10-20 | trivial | Explicit written-pronoun contexts retain their text: third-person copulas with pronoun labels or typographic cues no longer receive personal agreement or apostrophe corrections; ordinary prose remains checked |
 | 2026-10-20 | trivial | French elision conflicts are resolved only after grammatical context passes exact-language filtering; a rejected reflexive auxiliary retains independent spelling and typography |
 | 2026-10-20 | minor | French reflexive auxiliary correction with recorded participles, bounded clitics/negation, exact-language context and retained participle endings; no general participle agreement |
@@ -350,6 +356,30 @@ A successful call to the public French dictionary installation API clears an ear
 load diagnostic; an invalid replacement preserves the current dictionary and diagnostic.
 The regression exercises unreadable disk data, a failed replacement, a valid replacement
 and a second failed replacement. Options labels keep France and Canada distinct.
+
+## Combining marks and French compound boundaries
+
+The proofing tokenizer keeps a Unicode Mark attached to its preceding letter or
+continuing mark sequence. It does not attach an orphan mark after punctuation or
+digits. This avoids splitting a decomposed spelling such as `e` + U+0301 + `cole`
+before the dictionary can apply its existing input conversions. The original
+UTF-8 text and issue offsets are retained; the document is not normalized or
+rewritten. See [Unicode canonical equivalence](https://unicode.org/reports/tr15/#Canonical_And_Compatibility_Equivalence).
+
+French punctuation trimming also retains a final attached mark, as in `cafe` +
+U+0301. Recognition still depends on the installed dictionary and its input
+conversions; this change does not add a general normalization engine.
+
+The French compound fallback requires every internal hyphen-separated component
+to be nonempty. `porte--monnaie` and `va--t-il` can therefore be reported instead
+of bypassing spelling checks. Existing valid compounds and inversions remain
+accepted. Explicit full-word dictionary entries and user-dictionary choices are
+checked before this fallback and retain priority.
+
+Process-isolated synthetic regressions cover original byte ranges, both French
+regions, orphan marks, another dictionary-backed language and explicit user
+entries. The existing required real French dictionary gate covers both forms of
+accented words and malformed versus valid compounds with pinned Dicollecte data.
 
 ## Bounded reflexive auxiliary correction
 

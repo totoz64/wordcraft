@@ -76,7 +76,11 @@ impl ProofLang {
         let Some(tag) = tag.map(str::trim).filter(|t| !t.is_empty()) else { return ProofLang::En };
         let mut parts = tag.split(['-', '_', '.']);
         let primary = parts.next().unwrap_or("");
-        let canada = parts.any(|p| p.eq_ignore_ascii_case("ca"));
+        let first = parts.next().unwrap_or("");
+        // A region follows the language and optional script, before variants or extensions.
+        // The `ca` calendar key in `fr-u-ca-gregory` is not a Canadian region.
+        let region = if first.len() == 4 && first.chars().all(|c| c.is_ascii_alphabetic()) { parts.next().unwrap_or("") } else { first };
+        let canada = region.eq_ignore_ascii_case("ca");
         if primary.eq_ignore_ascii_case("en") || primary.eq_ignore_ascii_case("eng") {
             ProofLang::En
         } else if primary.eq_ignore_ascii_case("pl") || primary.eq_ignore_ascii_case("pol") {
@@ -251,5 +255,15 @@ mod tests {
         assert!(ProofLang::Fr.is_proofed() && ProofLang::FrCa.is_proofed());
         assert_eq!((ProofLang::Fr.code(), ProofLang::FrCa.code()), ("fr", "fr"));
         assert!(ProofLang::PROOFED.contains(&ProofLang::Pt), "every proofed language is listed");
+    }
+
+    #[test]
+    fn french_region_is_not_read_from_extensions() {
+        for tag in ["fr-u-ca-gregory", "fr-Latn-u-ca-gregory", "fr-x-ca", "fr-Latn-x-ca", "fr-FR-u-ca-gregory", "fr-Latn-FR-x-ca"] {
+            assert_eq!(ProofLang::from_tag(Some(tag)), ProofLang::Fr, "{tag}");
+        }
+        for tag in ["fr-CA", "fr-Latn-CA", "fr_CA.UTF-8", "fr-CA-u-ca-gregory", "fr-Latn-CA-x-fr"] {
+            assert_eq!(ProofLang::from_tag(Some(tag)), ProofLang::FrCa, "{tag}");
+        }
     }
 }
