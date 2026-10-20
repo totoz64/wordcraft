@@ -1,6 +1,6 @@
 # Installing spelling dictionaries
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French dictionary installation and real-dictionary verification; previously trivial: ISO 8859-1 dictionaries are read, #2824)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (one-click French dictionary installation on desktop)
 
 English spelling works out of the box. French, Polish, Russian, Portuguese, Czech, Italian, Croatian and
 Turkish spelling use a standard **Hunspell** dictionary (an `.aff` and a `.dic` file) that
@@ -13,7 +13,29 @@ size limit, a parse error), the language isn't checked either, and the status ba
 **(dictionary unreadable)** instead. Its tooltip gives the `.dic` file and the reason, and
 **File › Options › Proofing** lists the same reason next to the file.
 
-Install a dictionary once, restart WordCraft, and the language is checked as you type.
+Install a dictionary once and the language is checked as you type. The French installation
+button activates it immediately; manually copied files may require a restart.
+
+## Install French from WordCraft (desktop)
+
+1. Open **File › Options › Proofing**.
+2. Click **Install French dictionary**. In French: **Installer le dictionnaire français**.
+3. Wait for **The French dictionary is ready.** No restart or file copying is needed.
+
+The button downloads Dicollecte 7.7 (MPL 2.0), including its licence/readme, from a pinned
+LibreOffice dictionary revision on GitHub. Downloads happen only after clicking the button;
+launching WordCraft and reading installation status never contact the network. It checks the
+SHA-256 of each file and activates the pair only after both files have been completely installed.
+An interrupted download can be retried with the same button. No document content is sent.
+
+The dictionary is saved in a versioned subfolder of the chosen dictionaries folder, or under
+WordCraft's user profile when no folder is selected. The choice is saved and reused automatically
+on later launches. Existing manually installed French files take precedence and are kept;
+files for other languages are kept too. If you change folders during the download, the newer
+choice wins and WordCraft asks you to retry. An existing incomplete managed installation is
+reported rather than overwritten. The button is available only in the desktop app.
+
+This installs spelling data; the document still needs to use French as its proofing language.
 
 ## Which files each language needs
 
@@ -56,6 +78,9 @@ The first folder holding a matching pair wins:
 The web version can't read these folders, so these languages aren't spell-checked there.
 
 ## Example: French (`fr` / `fr_FR`)
+
+The desktop installation button above is the simplest option. The following instructions are
+for a manual or offline installation.
 
 The [LibreOffice French dictionaries](https://github.com/LibreOffice/dictionaries/tree/master/fr_FR/dictionaries)
 provide `fr.aff` and `fr.dic` (Dicollecte / Grammalecte, MPL 2.0). Keep both files in the same
@@ -158,6 +183,7 @@ Never commit dictionary files to this repository: they stay on the user's system
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-20 | minor | Desktop download button for French: verified files, retry, immediate activation and saved preferences |
 | 2026-10-20 | minor | French file names, Windows installation, other platforms, proofing language selection and explicit real-dictionary gate |
 | 2026-10-18 | trivial | ISO 8859-1 (`SET ISO8859-1`) dictionaries are read, so the original VERO `pt_BR` works without converting it to UTF-8 (#2824) |
 | 2026-10-18 | minor | An installed dictionary that can't be read shows **(dictionary unreadable)** in the status bar, with the file and reason in its tooltip and in File › Options › Proofing (#2830) |

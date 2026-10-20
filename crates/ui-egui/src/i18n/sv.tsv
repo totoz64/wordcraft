@@ -2714,3 +2714,13 @@ preview	Title	Titel
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Skriv en storlek i valfri enhet, till exempel 5 cm eller 300 px. Den andra sidan följer med, så att bilden behåller sina proportioner.
 
 	Import…	Importera…
+
+# Explicit desktop French dictionary installation
+	Install French dictionary	Installera fransk ordbok
+	French dictionary (Dicollecte 7.7, MPL 2.0)	Fransk ordbok (Dicollecte 7.7, MPL 2.0)
+	Downloaded from GitHub only when you click Install.	Hämtas från GitHub först när du klickar på Installera.
+	Installing the French dictionary…	Installerar den franska ordboken…
+	The French dictionary is ready.	Den franska ordboken är klar.
+	Dictionary installation failed: {reason}	Det gick inte att installera ordboken: {reason}
+	The dictionary download stopped. Please try again.	Hämtningen av ordboken avbröts. Försök igen.
+	The dictionaries folder changed during installation. Please try again.	Ordboksmappen ändrades under installationen. Försök igen.

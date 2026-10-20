@@ -2695,3 +2695,13 @@
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Írj be egy méretet bármilyen mértékegységben, például 5 cm vagy 300 px. A másik oldal követi, így a kép megtartja az arányait.
 
 	Import…	Importálás…
+
+# Explicit desktop French dictionary installation
+	Install French dictionary	Francia szótár telepítése
+	French dictionary (Dicollecte 7.7, MPL 2.0)	Francia szótár (Dicollecte 7.7, MPL 2.0)
+	Downloaded from GitHub only when you click Install.	Csak a telepítés gombra kattintva töltődik le a GitHubról.
+	Installing the French dictionary…	A francia szótár telepítése…
+	The French dictionary is ready.	A francia szótár készen áll.
+	Dictionary installation failed: {reason}	A szótár telepítése sikertelen: {reason}
+	The dictionary download stopped. Please try again.	A szótár letöltése megszakadt. Próbálja újra.
+	The dictionaries folder changed during installation. Please try again.	A szótárak mappája megváltozott a telepítés közben. Próbálja újra.

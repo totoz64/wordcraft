@@ -2289,3 +2289,13 @@
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	可用任何單位輸入大小，例如 5 cm 或 300 px。另一邊隨之調整，圖片保持原有比例。
 
 	Import…	匯入…
+
+# Explicit desktop French dictionary installation
+	Install French dictionary	安裝法語詞典
+	French dictionary (Dicollecte 7.7, MPL 2.0)	法語詞典（Dicollecte 7.7，MPL 2.0）
+	Downloaded from GitHub only when you click Install.	僅在按下安裝後才會從 GitHub 下載。
+	Installing the French dictionary…	正在安裝法語詞典…
+	The French dictionary is ready.	法語詞典已就緒。
+	Dictionary installation failed: {reason}	詞典安裝失敗：{reason}
+	The dictionary download stopped. Please try again.	詞典下載已中斷。請重試。
+	The dictionaries folder changed during installation. Please try again.	詞典資料夾在安裝期間發生了變化。請重試。

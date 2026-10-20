@@ -2699,3 +2699,13 @@ preview	Title	Naslov
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Upišite veličinu u bilo kojoj jedinici, npr. 5 cm ili 300 px. Druga se strana prilagođava pa slika zadržava svoje proporcije.
 
 	Import…	Uvezi…
+
+# Explicit desktop French dictionary installation
+	Install French dictionary	Instaliraj francuski rječnik
+	French dictionary (Dicollecte 7.7, MPL 2.0)	Francuski rječnik (Dicollecte 7.7, MPL 2.0)
+	Downloaded from GitHub only when you click Install.	Preuzima se s GitHuba samo kada kliknete Instaliraj.
+	Installing the French dictionary…	Instaliranje francuskog rječnika…
+	The French dictionary is ready.	Francuski rječnik je spreman.
+	Dictionary installation failed: {reason}	Instalacija rječnika nije uspjela: {reason}
+	The dictionary download stopped. Please try again.	Preuzimanje rječnika je prekinuto. Pokušajte ponovno.
+	The dictionaries folder changed during installation. Please try again.	Mapa rječnika promijenjena je tijekom instalacije. Pokušajte ponovno.
