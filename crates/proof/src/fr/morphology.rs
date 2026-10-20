@@ -4,7 +4,7 @@
 //! Grammalecte grammar code. The optional file is never bundled. Without it, four small
 //! original present-tense paradigms support the first agreement cases and their homographs.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
@@ -61,6 +61,7 @@ pub struct Lexicon {
     records: Vec<Record>,
     by_lemma: Vec<(u32, usize)>,
     finite_len: usize,
+    nonverbal: HashSet<String>,
 }
 
 /// In the pinned 7.7 annotation, the last two slots concern être/avoir. `zz` does
@@ -111,9 +112,21 @@ fn person(feature: &str) -> u8 {
 }
 
 impl Lexicon {
+    fn remember_nonverbal(&mut self, form: &str, line_number: usize) -> Result<(), String> {
+        if form.is_empty() || form.len() > MAX_WORD_BYTES {
+            return Err(format!("Invalid French morphology word at line {line_number}"));
+        }
+        self.nonverbal.insert(form.to_owned());
+        if self.nonverbal.len() > MAX_RECORDS {
+            return Err("French morphology has too many nonverbal forms".into());
+        }
+        Ok(())
+    }
+
     /// Parse the public 20-column TSV. Reads, rows, fields and index fan-out are bounded.
     /// Retains finite readings and canonical (masculine singular/invariable) participles,
-    /// with infinitive/auxiliary annotations. Non-verbal entries remain outside the index.
+    /// with infinitive/auxiliary annotations. Nonverbal homographs are retained separately
+    /// as ambiguity facts, never as verb/person/tense readings.
     pub fn from_reader(input: impl Read) -> Result<Self, String> {
         let mut input = BufReader::new(input);
         let mut line = String::new();
@@ -159,10 +172,15 @@ impl Lexicon {
                 return Err(format!("Missing French morphology fields at line {line_number}"));
             };
             let mut features = features.split_whitespace();
-            let Some(tag) = features.next().filter(|tag| tag.starts_with('v')) else { continue };
+            let Some(tag) = features.next() else { continue };
+            if !tag.starts_with('v') {
+                lexicon.remember_nonverbal(form, line_number)?;
+                continue;
+            }
             let (mut tenses, mut persons, mut imperative) = (0u8, 0u8, false);
             let (mut infinitive, mut participle, mut masculine, mut epicene, mut singular, mut invariant) =
                 (false, false, false, false, false, false);
+            let mut adjective = false;
             for feature in features {
                 tenses |= tense(feature);
                 persons |= person(feature);
@@ -173,6 +191,10 @@ impl Lexicon {
                 epicene |= feature == "epi";
                 singular |= feature == "sg";
                 invariant |= feature == "inv";
+                adjective |= feature == "adj";
+            }
+            if participle && adjective {
+                lexicon.remember_nonverbal(form, line_number)?;
             }
             if imperative {
                 continue;
@@ -245,6 +267,14 @@ impl Lexicon {
         self.finite_len = self.records.iter().filter(|record| record.tenses != 0).count();
         self.by_lemma = self.records.iter().enumerate().map(|(i, record)| (record.lemma, i)).collect();
         self.by_lemma.sort_unstable();
+        // Only homographs of finite forms are needed to avoid treating a noun/apposition
+        // as a verb. Nonverbal rows never become person/tense analyses or lemma records.
+        let records = &self.records;
+        self.nonverbal.retain(|form| {
+            let start = records.partition_point(|r| r.form.as_str() < form.as_str());
+            let end = records.partition_point(|r| r.form.as_str() <= form.as_str());
+            records.get(start..end).unwrap_or_default().iter().any(|r| r.tenses != 0)
+        });
     }
 
     /// Original present-tense facts. `suivre` and `sommer` preserve valid readings of `suis`
@@ -264,6 +294,7 @@ impl Lexicon {
                 lexicon.records.push(Record { form: form.to_owned(), lemma: id, tenses: 1, persons, nonfinite: 0, auxiliary: 0 });
             }
         }
+        lexicon.nonverbal.extend(["a", "as", "est", "sommes"].into_iter().map(str::to_owned));
         lexicon.finish();
         lexicon
     }
@@ -281,6 +312,25 @@ impl Lexicon {
         let start = self.records.partition_point(|record| record.form.as_str() < form);
         let end = self.records.partition_point(|record| record.form.as_str() <= form);
         self.records.get(start..end).unwrap_or_default()
+    }
+
+    /// A finite person reading exists; this does not choose an intended mood or word sense.
+    pub fn has_person_reading(&self, form: &str, target: Person) -> bool {
+        form.len() <= MAX_WORD_BYTES && self.analyses(form).iter().any(|r| r.tenses != 0 && r.persons & target.bit() != 0)
+    }
+
+    /// A recorded nonverbal homograph of a finite form requires context before correction.
+    pub fn has_nonverbal_reading(&self, form: &str) -> bool {
+        form.len() <= MAX_WORD_BYTES && self.nonverbal.contains(form)
+    }
+
+    /// Whether an être/avoir finite reading exists, independently of other homographs.
+    pub fn has_auxiliary_reading(&self, form: &str) -> bool {
+        form.len() <= MAX_WORD_BYTES
+            && self.analyses(form).iter().any(|r| {
+                r.tenses != 0
+                    && usize::try_from(r.lemma).ok().and_then(|i| self.lemmas.get(i)).is_some_and(|s| matches!(s.as_str(), "être" | "avoir"))
+            })
     }
 
     /// Preserve any valid finite reading. Otherwise suggest forms of the same lemmas and
@@ -519,6 +569,33 @@ mod tests {
         ]);
         let incomplete = Lexicon::from_reader(incomplete_homograph.as_bytes()).unwrap();
         assert!(incomplete.participle_forms("classer", first, false, false).is_none(), "every infinitive reading needs a recorded participle");
+    }
+
+    #[test]
+    fn nonverbal_homographs_stay_separate_from_person_readings() {
+        let data = table(&[
+            ("guides", "guider", "v1__t____a ipre 2sg"),
+            ("guidons", "guider", "v1__t____a ipre 1pl"),
+            ("guides", "guide", "nom mas pl"),
+            ("comme", "comme", "mg cjsub adv"),
+            ("est", "être", "v0ei_____a ipre 3sg"),
+            ("est", "est", "nom mas inv"),
+            ("abasourdis", "abasourdir", "v2__t____a ipre 1sg 2sg"),
+            ("abasourdis", "abasourdir", "v2__t____a ppas adj mas pl"),
+            ("abasourdissons", "abasourdir", "v2__t____a ipre 1pl"),
+        ]);
+        let lexicon = Lexicon::from_reader(data.as_bytes()).unwrap();
+        assert_eq!(lexicon.len(), 5);
+        assert!(lexicon.has_nonverbal_reading("guides"));
+        assert!(lexicon.has_nonverbal_reading("est"));
+        assert!(lexicon.has_nonverbal_reading("abasourdis"), "adjectival participle readings are retained even in a verb-tagged row");
+        assert!(!lexicon.has_nonverbal_reading("comme"), "only finite homographs need retained nonverbal facts");
+        assert!(lexicon.has_person_reading("guidons", Person::FirstPlural));
+        assert!(!lexicon.has_person_reading("guides", Person::FirstPlural));
+        assert!(lexicon.has_auxiliary_reading("est"));
+        assert!(!lexicon.has_auxiliary_reading("guides"));
+        let too_long = "x".repeat(MAX_WORD_BYTES + 1);
+        assert!(Lexicon::from_reader(table(&[("est", "être", "v0 ipre 3sg"), (&too_long, "nom", "nom mas sg")]).as_bytes()).is_err());
     }
 
     #[test]

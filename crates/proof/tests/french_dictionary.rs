@@ -48,10 +48,23 @@ fn real_french_dictionary_spelling_suggestions_and_dispatch() {
         assert_eq!(issue.message, "Faute d’orthographe possible");
     }
     assert!(wordcraft_proof::dictionary_load_error(ProofLang::Fr).is_none());
+    let contraction = "J’est maisonn.";
+    for lang in [ProofLang::Fr, ProofLang::FrCa] {
+        let spans = [(0..contraction.len(), lang)];
+        let found = wordcraft_proof::check_text(contraction, &spans);
+        assert_eq!(found.len(), 2, "{found:?}");
+        assert!(found.iter().any(|i| i.kind == wordcraft_proof::IssueKind::Grammar && i.suggestions == ["Je suis"]));
+        assert!(found.iter().any(|i| i.kind == wordcraft_proof::IssueKind::Spelling && &contraction[i.start..i.end] == "maisonn"));
+        let spelling_only = wordcraft_proof::check_text_with(contraction, &spans, &Default::default(), false, false);
+        assert_eq!(spelling_only.len(), 2, "spelling-only mode must keep the invalid contraction: {spelling_only:?}");
+        assert!(spelling_only.iter().all(|i| i.kind == wordcraft_proof::IssueKind::Spelling));
+    }
     // Grammar must coexist with real spelling, not only with a synthetic fixture: both the
     // infinitive and the participle are valid dictionary words, but only one fits this phrase.
     for lang in [ProofLang::Fr, ProofLang::FrCa] {
-        for (text, flagged, replacement) in [("J’ai manger.", "manger", "mangé"), ("Si il vient.", "Si il", "S’il")] {
+        for (text, flagged, replacement) in
+            [("J’ai manger.", "manger", "mangé"), ("Si il vient.", "Si il", "S’il"), ("J’est responsable.", "J’est", "Je suis")]
+        {
             let issues = wordcraft_proof::check_text(text, &[(0..text.len(), lang)]);
             assert_eq!(issues.len(), 1, "{lang:?}: {text}: {issues:?}");
             let issue = &issues[0];

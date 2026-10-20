@@ -28,6 +28,51 @@ fn auxiliary_beginning(text: &str) -> bool {
     words.next().is_some_and(|word| auxiliaries.contains(&word.strip_prefix("n'").unwrap_or(word)))
 }
 
+fn finite_personal_beginning(text: &str, lexicon: &morphology::Lexicon) -> bool {
+    use morphology::Person;
+    let mut words = text.split_whitespace();
+    let Some(mut first) = words.next() else { return false };
+    if matches!(first, "—" | "–" | "-") {
+        let Some(next) = words.next() else { return false };
+        first = next;
+    }
+    let fused =
+        first.strip_prefix("J’").or_else(|| first.strip_prefix("j’")).or_else(|| first.strip_prefix("J'")).or_else(|| first.strip_prefix("j'"));
+    if fused.is_none()
+        && !matches!(
+            first,
+            "Je" | "je"
+                | "Tu"
+                | "tu"
+                | "Il"
+                | "il"
+                | "Elle"
+                | "elle"
+                | "On"
+                | "on"
+                | "Nous"
+                | "nous"
+                | "Vous"
+                | "vous"
+                | "Ils"
+                | "ils"
+                | "Elles"
+                | "elles"
+        )
+    {
+        return false;
+    }
+    let Some(mut form) = fused.or_else(|| words.next()) else { return false };
+    if form == "ne" {
+        let Some(next) = words.next() else { return false };
+        form = next;
+    }
+    form = form.strip_prefix("n’").or_else(|| form.strip_prefix("n'")).unwrap_or(form).trim_end_matches([',', '.', ';', ':', '!', '?', '…']);
+    [Person::FirstSingular, Person::SecondSingular, Person::ThirdSingular, Person::FirstPlural, Person::SecondPlural, Person::ThirdPlural]
+        .into_iter()
+        .any(|p| lexicon.has_person_reading(form, p))
+}
+
 #[test]
 #[ignore = "requires original external prose in WORDCRAFT_FRENCH_PROSE and full WORDCRAFT_FRENCH_LEXICON"]
 fn external_prose_reports_actual_auxiliary_contexts_and_new_alerts() {
@@ -35,6 +80,7 @@ fn external_prose_reports_actual_auxiliary_contexts_and_new_alerts() {
     let lexicon = std::env::var_os("WORDCRAFT_FRENCH_LEXICON").expect("set WORDCRAFT_FRENCH_LEXICON");
     wordcraft_proof::set_dictionaries_folder(Some(std::path::Path::new(&lexicon).parent().unwrap().to_owned()));
     assert!(matches!(morphology::data_status(),morphology::DataStatus::Ready{analyses,..} if analyses>200_000));
+    let readings = morphology::Lexicon::from_reader(std::fs::File::open(&lexicon).unwrap()).unwrap();
     use std::io::Read;
     let mut input = String::new();
     std::fs::File::open(path).unwrap().take(8 * 1024 * 1024 + 1).read_to_string(&mut input).unwrap();
@@ -42,6 +88,7 @@ fn external_prose_reports_actual_auxiliary_contexts_and_new_alerts() {
     let (mut paragraphs, mut beginnings, mut unquoted, mut words) = (0usize, 0usize, 0usize, 0usize);
     let (mut originals, mut variants, mut original_aux, mut variant_aux) = (0usize, 0usize, 0usize, 0usize);
     let mut alerts = Vec::new();
+    let (mut personal, mut unquoted_personal) = (0usize, 0usize);
     for (index, line) in input.lines().enumerate() {
         let (source, text) = line.split_once('\t').expect("source<TAB>one normalized paragraph");
         paragraphs += 1;
@@ -52,6 +99,12 @@ fn external_prose_reports_actual_auxiliary_contexts_and_new_alerts() {
             originals += 1;
         }
         words += text.split_whitespace().count();
+        if finite_personal_beginning(text, &readings) {
+            personal += 1;
+            if !text.chars().any(|c| matches!(c, '"' | '«' | '»' | '“' | '”' | '`' | '<' | '>' | '=' | '@' | '\\' | '\t' | '\n' | '\r')) {
+                unquoted_personal += 1;
+            }
+        }
         if auxiliary_beginning(text) {
             beginnings += 1;
             if variant {
@@ -63,13 +116,16 @@ fn external_prose_reports_actual_auxiliary_contexts_and_new_alerts() {
                 unquoted += 1;
             }
         }
-        for issue in grammar::check_in(text, ProofLang::Fr).into_iter().filter(|i| i.message.starts_with("Participe passé attendu après avoir")) {
+        for issue in grammar::check_in(text, ProofLang::Fr)
+            .into_iter()
+            .filter(|i| i.message.starts_with("Participe passé attendu après avoir") || i.message == "Accord du verbe avec le pronom sujet")
+        {
             assert!(text.get(issue.start..issue.end).is_some());
             alerts.push(format!("{source} paragraph{index}: {text} → {:?}", issue.suggestions));
         }
     }
     eprintln!(
-        "prose smoke: {paragraphs} input records, {words} whitespace words, {beginnings} auxiliary beginnings, {unquoted} unquoted auxiliary beginnings, {} new participle alerts",
+        "prose smoke: {paragraphs} input records, {words} whitespace words, {beginnings} auxiliary beginnings, {unquoted} unquoted auxiliary beginnings, {} new participle/subject alerts",
         alerts.len()
     );
     eprintln!(
@@ -78,6 +134,10 @@ fn external_prose_reports_actual_auxiliary_contexts_and_new_alerts() {
     for alert in &alerts {
         eprintln!("{alert}");
     }
+    eprintln!(
+        "Known finite personal-subject beginnings: {personal}, including {unquoted_personal} unquoted; prefix counts, not a precision estimate."
+    );
     assert!(paragraphs > 1000 && beginnings > 20, "real external prose must exercise actual trigger contexts");
+    assert!(personal > 200, "the added subject rule needs actual known finite contexts");
     assert!(alerts.is_empty(), "inspect source and classify any alert before accepting it; this is not a blind precision claim");
 }
