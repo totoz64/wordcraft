@@ -5363,6 +5363,7 @@ dependencies = [
  "miniz_oxide 0.8.9",
  "proptest",
  "tempfile",
+ "unicode-general-category",
 ]
 
 [[package]]
