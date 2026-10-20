@@ -24,11 +24,11 @@ fn drawn_grammar_marks(session: &mut Session) -> usize {
 
 #[test]
 fn french_grammar_suggestions_apply_and_undo_in_both_regions() {
-    wordcraft_proof::fr::install_dictionary(
-        "SET UTF-8\nICONV 1\nICONV ’ '\n",
-        "25\nj'ai\nmanger\nmangé\nsi\nil\ns'il\nvient\ntu\nas\nc'est\nmoi\nqui\nest\nsuis\nj'avais\nécrire\nécrit\nje\navais\nn'ai\nn'avais\npas\ndéjà\nencore\nbien\n",
-    )
-    .unwrap();
+    let words = [
+        "j'ai", "manger", "mangé", "si", "il", "s'il", "vient", "tu", "as", "c'est", "moi", "qui", "est", "suis", "j'avais", "écrire", "écrit", "je",
+        "avais", "n'ai", "n'avais", "pas", "déjà", "encore", "bien", "a", "avons", "avez", "vous", "nous", "n'est", "ne",
+    ];
+    wordcraft_proof::fr::install_dictionary("SET UTF-8\nICONV 1\nICONV ’ '\n", &format!("{}\n{}\n", words.len(), words.join("\n"))).unwrap();
     for language in ["fr-FR", "fr-CA"] {
         for (original, flagged, suggestion) in [
             ("J’ai manger.", "manger", "mangé"),
@@ -38,6 +38,11 @@ fn french_grammar_suggestions_apply_and_undo_in_both_regions() {
             ("Je n’ai pas écrire.", "écrire", "écrit"),
             ("J’ai déjà écrire.", "écrire", "écrit"),
             ("Je n’avais pas encore bien écrire.", "écrire", "écrit"),
+            ("Je est.", "est", "suis"),
+            ("Je avons.", "Je avons", "J’ai"),
+            ("Vous a.", "a", "avez"),
+            ("Je n’est pas.", "n’est", "ne suis"),
+            ("J’est.", "J’est", "Je suis"),
         ] {
             let mut session = Session::new(Document::from_text(original));
             run(&mut session, "select.all", json!({}));
@@ -83,5 +88,23 @@ fn french_grammar_suggestions_apply_and_undo_in_both_regions() {
         assert_eq!(restored.as_array().unwrap().len(), 2);
         assert_eq!(restored[0]["text"], "Je avais");
         assert_eq!(restored[1]["text"], "écrire");
+        // Fixing the auxiliary unlocks the later participle check and shifts its UTF-8 range.
+        let mut session = Session::new(Document::from_text("Nous a déjà écrire."));
+        run(&mut session, "select.all", json!({}));
+        run(&mut session, "review.language", json!({"lang":language,"default":true}));
+        assert_eq!(run(&mut session, "review.issues", json!({})).as_array().unwrap().len(), 1);
+        for (wrong, right) in [("a", "avons"), ("écrire", "écrit")] {
+            run(&mut session, "caret.docStart", json!({}));
+            let selected = run(&mut session, "review.spelling", json!({}));
+            assert_eq!(selected["text"], wrong);
+            assert!(selected["suggestions"].as_array().unwrap().iter().any(|s| s == right));
+            run(&mut session, "review.applySuggestion", json!({"text":right}));
+        }
+        assert!(run(&mut session, "review.issues", json!({})).as_array().unwrap().is_empty());
+        run(&mut session, "edit.undo", json!({}));
+        run(&mut session, "edit.undo", json!({}));
+        let restored = run(&mut session, "review.issues", json!({}));
+        assert_eq!(restored.as_array().unwrap().len(), 1);
+        assert_eq!(restored[0]["text"], "a");
     }
 }

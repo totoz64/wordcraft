@@ -408,7 +408,7 @@ fn sentence_capitals(text: &str, ws: &[(usize, usize)], v: &mut Vec<Issue>) {
 }
 
 /// Does `w` (lower case) start with a sound that makes `le`, `de`, `que`… elide?
-fn takes_elision(w: &str) -> bool {
+pub(super) fn takes_elision(w: &str) -> bool {
     let Some(first) = w.chars().next() else { return false };
     if NO_ELISION.contains(&w) {
         return false;
@@ -469,6 +469,11 @@ pub fn check(text: &str) -> Vec<Issue> {
     check_in(text, ProofLang::Fr)
 }
 
+/// A known finite-person correction can also resolve a misspelled contraction (`J’est`).
+pub(crate) fn is_personal_subject_issue(issue: &Issue) -> bool {
+    issue.message == super::subject_agreement::MESSAGE
+}
+
 /// Grammar issues in a paragraph of `lang` text ([`ProofLang::Fr`], or [`ProofLang::FrCa`] for
 /// Quebec typography), in order.
 pub fn check_in(text: &str, lang: ProofLang) -> Vec<Issue> {
@@ -482,6 +487,12 @@ pub fn check_in(text: &str, lang: ProofLang) -> Vec<Issue> {
     elisions(text, &ws, &mut v);
     super::conjugation::check(text, &ws, &mut v);
     super::agreement::check(text, &ws, &mut v);
+    if let Some(subject) = super::subject_agreement::check(text, &ws) {
+        // Agreement takes precedence over a conflicting apostrophe-only fix: `Je est`
+        // needs `Je suis`, never `J’est`. Unrelated typography suggestions are retained.
+        v.retain(|old| !(old.message.starts_with("Élision") && old.start < subject.end && subject.start < old.end));
+        v.push(subject);
+    }
     for i in &mut v {
         i.lang = lang;
     }

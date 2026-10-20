@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660); previously minor (French personal-subject agreement; baseline #1660)
 
 ## Shared-engine compatibility and reproducible CI
 
@@ -36,8 +36,9 @@ Document proofing reads the Canadian region only in its region position, after a
 script (`fr-CA`, `fr-Latn-CA`). Extension data such as `fr-u-ca-gregory` and `fr-x-ca`
 does not select Quebec typography.
 
-General subject–verb agreement, gender/number agreement and contextual homophones are not
-checked. Conjugation coverage is limited to the first cases below. No automatic document-wide
+Subject–verb agreement is limited to initial personal subjects and the personal-cleft cases
+below. Noun-phrase/later-clause agreement, gender/number agreement and contextual homophones
+are not generally checked. No automatic document-wide
 correction is applied.
 
 ## Infinitive/participle and elision checks
@@ -110,6 +111,59 @@ Engine integration exercises F7, Change, Undo and **Mark grammar errors as you t
 It also fixes `Je avais déjà écrire` in two steps, verifying recomputed UTF-8 ranges after elision
 and two undos restoring the original text. Suggestions never rewrite the document automatically.
 
+## Direct personal-subject agreement
+
+At a paragraph's beginning, `je`, `tu`, `il`, `elle`, `on`, `nous`, `vous`, `ils` and `elles`
+can suggest same-lemma finite forms agreeing with the pronoun: `Nous manges` can offer
+`mangeons` and `mangions`, `Vous a` offers `avez`, and `Je est` offers `suis`.
+The pronouns' [grammatical persons](https://vitrinelinguistique.oqlf.gouv.qc.ca/fiche-gdt/fiche/26558057/pronom-personnel)
+determine the person/number; polite singular vous still takes the plural verb, as the
+[Académie explains](https://www.dictionnaire-academie.fr/article/QDL059).
+An optional separated dialogue dash and immediate `ne` or contracted `n’`/`n'` are supported.
+Fused `J’est`/`J'est` becomes `Je suis`; `Je n’est` becomes `Je ne suis`.
+
+The existing four original present paradigms work without optional data. With the data,
+all supported finite tenses/moods remain available. Any valid person reading stays quiet:
+`Tu suis cette piste` and `Tu sommes le débiteur de payer` retain their suivre/sommer readings.
+The rule preserves overlapping moods and can offer several alternatives; it does not infer
+the intended tense/mood from the whole sentence or turn an infinitive into a guessed tense.
+
+Nonverbal rows and adjectival-participle readings are retained only as bounded homograph
+facts separate from the finite index. They do not increase the public 274,427 finite-analysis
+count. Positive plural subjects followed by ambiguous non-auxiliary forms are declined:
+`Nous guides de montagne accompagnons ce groupe`, `Vous élèves de ce collège savez la réponse`
+and `Nous abasourdis restons sans voix` must not become guidons, élevez or abasourdissons.
+For an être/avoir homograph, a bounded following context protects nominal appositions such as
+`Nous as du volant sommes prudents`; direct auxiliary errors such as `Vous a raison` remain
+correctable. This is not general syntactic or semantic disambiguation and can miss errors
+whose forms have a nominal/participial reading.
+
+Agreement takes precedence over a conflicting apostrophe-only fix, so `Je est` never offers
+the invalid `J’est`. When necessary the suggestion replaces je plus the verb as one range:
+`Je avons` → `J’ai`. Negative suggestions choose ne/n’ consistently. Unknown h pronunciation
+is declined when generating je/ne elision, using the existing explicit mute-h table rather
+than guessing. Unrelated typography/elision issues are retained.
+
+With grammar enabled, a known French person correction supersedes only covered French spelling
+marks for that same contraction. Thus real-dictionary `J’est` has one useful grammatical
+suggestion rather than duplicate spelling/grammar guesses. Spelling-only mode still reports
+the misspelling, other misspelled words remain, and a whole-subject replacement cannot cross
+a proofing-language boundary. Quotations, code, tables, metalinguistic examples, intervening
+object clitics/adverbs and later clauses remain outside the new rule.
+
+Independent synthetic and pinned-data tests cover exact ranges, six persons, all seven
+finite tense/mood categories, negative/fused contractions, nominal and participial appositions,
+unrelated errors, language boundaries and stable suggestions in both French regions. Unsupported
+errors and ambiguous fragments are kept separate from correct-text evidence. The external prose
+gate additionally observes 872 known finite personal-subject beginnings, including 748 unquoted
+beginnings, with no new subject/participle alerts across the same four books. These are prefix
+counts, include overlapping dialogue variants, and are not a precision estimate.
+
+F7/Change/Undo and grammar marks off/on use the same commands as the UI. The engine regression
+fixes `Nous a déjà écrire` in two stages: a → avons shifts the later byte range and enables
+the participle check, then écrire → écrit; two undos restore the initial issue. The existing
+elision → participle sequence remains covered.
+
 ## Personal-cleft agreement and optional morphology
 
 `C’est moi qui est` suggests `suis`; `C’est nous qui ont` suggests `avons`.
@@ -163,7 +217,8 @@ reader does not use Grammalecte grammar code. The real-data gate currently reads
 274,427 finite analyses, kept separate from the new infinitive/canonical-participle index;
 nouns and imperatives are not retained as verbal readings. Canonical participles are masculine
 singular or invariant forms, not guessed agreement variants. File size, line length, retained
-row count and index fan-out are bounded across finite and nonfinite records. The public finite
+row count and index fan-out are bounded across finite and nonfinite records; the separate nonverbal-form
+set is bounded too and keeps only finite homographs after parsing. The public finite
 analysis count and installer readiness remain unchanged.
 An unreadable optional file records a diagnostic through `fr::morphology::load_error()`
 and leaves the builtin rules available. A successful reload clears the diagnostic.
@@ -248,6 +303,7 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 | 2026-10-20 | minor | French dictionary replacement clears stale load errors only after successful parsing; Canadian French keeps its own Options label |
 | 2026-10-20 | trivial | French hyphenation pattern asset included in both workflow path filters so pattern-only changes run the proofing regressions |
 | 2026-10-20 | minor | Frozen pre-French affix outputs and legacy compact dictionaries agree; French CI pins Rust 1.98.1 and checks formatting on all three desktop systems |
+| 2026-10-20 | minor | French initial personal-subject agreement: preserved finite/nominal/participial readings, scoped elision and spelling precedence, negative contractions, mixed-language protection and real-data/prose regressions |
 | 2026-10-20 | minor | French participles through explicit negation and 19 common adverbs; three-word bound, idiom/clitic guards, exact-range stable corrections and expanded real-data/prose checks |
 | 2026-10-20 | minor | French irregular participles: five avoir tenses, 66 original fallback pairs, bounded optional lexical coverage and separate prose smoke gate; no general agreement claim |
 | 2026-10-20 | minor | Explicit desktop French verb-form data installation: pinned MPL-2.0 archive, bounded ZIP members, atomic activation, retained manual files, shared installation interlock and live reload; no general-grammar or readiness-estimate claim |

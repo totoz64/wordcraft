@@ -16,6 +16,7 @@ mod agreement;
 mod conjugation;
 pub mod grammar;
 pub mod morphology;
+mod subject_agreement;
 mod suggest;
 #[cfg(test)]
 pub(crate) mod test_dict;
