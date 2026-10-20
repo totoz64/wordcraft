@@ -8,6 +8,7 @@ on:
       - 'assets/hyphenation/fr.pat'
       - 'crates/engine/src/cmd/review.rs'
       - 'crates/engine/src/tests.rs'
+      - 'crates/engine/tests/french_grammar.rs'
       - 'docs/french-proofing.md'
       - 'docs/spelling-dictionaries.md'
       - '.github/workflows/french-proofing.yml'
@@ -19,6 +20,7 @@ on:
       - 'assets/hyphenation/fr.pat'
       - 'crates/engine/src/cmd/review.rs'
       - 'crates/engine/src/tests.rs'
+      - 'crates/engine/tests/french_grammar.rs'
       - 'docs/french-proofing.md'
       - 'docs/spelling-dictionaries.md'
       - '.github/workflows/french-proofing.yml'
@@ -93,3 +95,6 @@ jobs:
 
       - name: Review commands in French
         run: cargo test --locked -p wordcraft-engine --lib french_proofing_through_the_review_commands
+
+      - name: Grammar suggestions, disable and undo
+        run: cargo test --locked -p wordcraft-engine --test french_grammar

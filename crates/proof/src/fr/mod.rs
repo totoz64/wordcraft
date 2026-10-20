@@ -12,6 +12,7 @@
 //!   typos, and a dictionary scan for anything further off.
 //! - **Grammar** ([`grammar`]): French typography and a few reliable rules, with French messages.
 
+mod conjugation;
 pub mod grammar;
 mod suggest;
 #[cfg(test)]
