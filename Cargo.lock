@@ -5306,6 +5306,7 @@ dependencies = [
  "wordcraft-proof",
  "wordcraft-ui-egui",
  "zbus",
+ "zip",
 ]
 
 [[package]]
@@ -5540,6 +5541,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sys-locale",
+ "tempfile",
  "toml",
  "unicode-bidi",
  "wordcraft-doc",

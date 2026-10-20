@@ -129,6 +129,7 @@ jobs:
                   if len(contents) > limit:
                       raise RuntimeError("French lexicon member exceeds its size limit")
                   (directory / name).write_bytes(contents)
+          (directory / "lexique-grammalecte-fr-v7.7.zip").write_bytes(archive)
 
       - name: Required real French morphology gate
         env:
@@ -153,3 +154,11 @@ jobs:
 
       - name: Async installation state and preference persistence
         run: cargo test --locked -p wordcraft-ui-egui --test french_dictionary_setup
+
+      - name: Native French grammar data installation
+        env:
+          WORDCRAFT_FRENCH_LEXICON_ARCHIVE: ${{ runner.temp }}/wordcraft-french-morphology/lexique-grammalecte-fr-v7.7.zip
+        run: cargo test --locked -p wordcraft french_grammar_data -- --include-ignored
+
+      - name: Grammar data activation and installation interlock
+        run: cargo test --locked -p wordcraft-ui-egui --test french_grammar_setup

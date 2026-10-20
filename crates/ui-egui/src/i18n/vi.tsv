@@ -2749,3 +2749,13 @@ template	Letter	Thư
 	Dictionary installation failed: {reason}	Không thể cài đặt từ điển: {reason}
 	The dictionary download stopped. Please try again.	Quá trình tải từ điển đã dừng. Vui lòng thử lại.
 	The dictionaries folder changed during installation. Please try again.	Thư mục từ điển đã thay đổi trong khi cài đặt. Vui lòng thử lại.
+
+# Optional French finite-verb data installation
+	Add French verb forms	Thêm các dạng động từ tiếng Pháp
+	The French verb forms are ready.	Các dạng động từ tiếng Pháp đã sẵn sàng.
+	The French grammar data download stopped. Please try again.	Quá trình tải dữ liệu ngữ pháp tiếng Pháp đã dừng. Vui lòng thử lại.
+	French grammar data installation failed: {reason}	Không thể cài đặt dữ liệu ngữ pháp tiếng Pháp: {reason}
+	A French proofing installation is already in progress.	Một quá trình cài đặt công cụ kiểm lỗi tiếng Pháp đang diễn ra.
+	French grammar data	Dữ liệu ngữ pháp tiếng Pháp
+	More verbs for French agreement checks (12 MB download).	Thêm động từ để kiểm tra sự hòa hợp trong tiếng Pháp (tải xuống 12 MB).
+	Adding French verb forms…	Đang thêm các dạng động từ tiếng Pháp…

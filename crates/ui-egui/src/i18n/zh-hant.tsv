@@ -2299,3 +2299,13 @@
 	Dictionary installation failed: {reason}	詞典安裝失敗：{reason}
 	The dictionary download stopped. Please try again.	詞典下載已中斷。請重試。
 	The dictionaries folder changed during installation. Please try again.	詞典資料夾在安裝期間發生了變化。請重試。
+
+# Optional French finite-verb data installation
+	Add French verb forms	新增法語動詞形式
+	The French verb forms are ready.	法語動詞形式已就緒。
+	The French grammar data download stopped. Please try again.	法語文法資料下載已停止，請重試。
+	French grammar data installation failed: {reason}	法語文法資料安裝失敗：{reason}
+	A French proofing installation is already in progress.	法語校對工具正在安裝中。
+	French grammar data	法語文法資料
+	More verbs for French agreement checks (12 MB download).	為法語一致關係檢查新增更多動詞（下載大小為 12 MB）。
+	Adding French verb forms…	正在新增法語動詞形式…

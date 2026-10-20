@@ -2709,3 +2709,13 @@ preview	Title	Naslov
 	Dictionary installation failed: {reason}	Instalacija rječnika nije uspjela: {reason}
 	The dictionary download stopped. Please try again.	Preuzimanje rječnika je prekinuto. Pokušajte ponovno.
 	The dictionaries folder changed during installation. Please try again.	Mapa rječnika promijenjena je tijekom instalacije. Pokušajte ponovno.
+
+# Optional French finite-verb data installation
+	Add French verb forms	Dodaj francuske glagolske oblike
+	The French verb forms are ready.	Francuski glagolski oblici su spremni.
+	The French grammar data download stopped. Please try again.	Preuzimanje francuskih gramatičkih podataka je zaustavljeno. Pokušajte ponovno.
+	French grammar data installation failed: {reason}	Instalacija francuskih gramatičkih podataka nije uspjela: {reason}
+	A French proofing installation is already in progress.	Instalacija francuskih alata za provjeru već je u tijeku.
+	French grammar data	Francuski gramatički podaci
+	More verbs for French agreement checks (12 MB download).	Više glagola za provjeru sročnosti na francuskom (preuzimanje od 12 MB).
+	Adding French verb forms…	Dodavanje francuskih glagolskih oblika…

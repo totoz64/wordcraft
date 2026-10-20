@@ -35,7 +35,7 @@ pub fn hook(ctx: &egui::Context) -> wordcraft_ui_egui::dictionary_setup::Install
     })
 }
 
-fn destination(configured: Option<String>) -> Result<PathBuf, String> {
+pub(super) fn destination(configured: Option<String>) -> Result<PathBuf, String> {
     if let Some(folder) = configured.filter(|f| !f.trim().is_empty()) {
         return Ok(PathBuf::from(folder));
     }

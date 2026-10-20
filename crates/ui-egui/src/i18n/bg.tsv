@@ -2698,3 +2698,13 @@
 	Dictionary installation failed: {reason}	Инсталирането на речника е неуспешно: {reason}
 	The dictionary download stopped. Please try again.	Изтеглянето на речника спря. Опитайте отново.
 	The dictionaries folder changed during installation. Please try again.	Папката с речниците е променена по време на инсталирането. Опитайте отново.
+
+# Optional French finite-verb data installation
+	Add French verb forms	Добавяне на френски глаголни форми
+	The French verb forms are ready.	Френските глаголни форми са готови.
+	The French grammar data download stopped. Please try again.	Изтеглянето на френските граматични данни спря. Опитайте отново.
+	French grammar data installation failed: {reason}	Инсталирането на френските граматични данни е неуспешно: {reason}
+	A French proofing installation is already in progress.	Вече се изпълнява инсталиране на френските инструменти за проверка.
+	French grammar data	Френски граматични данни
+	More verbs for French agreement checks (12 MB download).	Още глаголи за проверка на съгласуването на френски (изтегляне на 12 МБ).
+	Adding French verb forms…	Добавяне на френски глаголни форми…

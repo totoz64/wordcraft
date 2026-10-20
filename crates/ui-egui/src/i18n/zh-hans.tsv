@@ -2310,3 +2310,13 @@
 	Dictionary installation failed: {reason}	词典安装失败：{reason}
 	The dictionary download stopped. Please try again.	词典下载已中断。请重试。
 	The dictionaries folder changed during installation. Please try again.	词典文件夹在安装期间发生了变化。请重试。
+
+# Optional French finite-verb data installation
+	Add French verb forms	添加法语动词形式
+	The French verb forms are ready.	法语动词形式已就绪。
+	The French grammar data download stopped. Please try again.	法语语法数据下载已停止，请重试。
+	French grammar data installation failed: {reason}	法语语法数据安装失败：{reason}
+	A French proofing installation is already in progress.	法语校对工具正在安装中。
+	French grammar data	法语语法数据
+	More verbs for French agreement checks (12 MB download).	为法语一致关系检查添加更多动词（下载大小为 12 MB）。
+	Adding French verb forms…	正在添加法语动词形式…

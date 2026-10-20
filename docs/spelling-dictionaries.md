@@ -1,6 +1,6 @@
 # Installing spelling dictionaries
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (one-click French dictionary installation on desktop)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (explicit French verb-form data installation; baseline #1660)
 
 English spelling works out of the box. French, Polish, Russian, Portuguese, Czech, Italian, Croatian and
 Turkish spelling use a standard **Hunspell** dictionary (an `.aff` and a `.dic` file) that
@@ -36,6 +36,22 @@ choice wins and WordCraft asks you to retry. An existing incomplete managed inst
 reported rather than overwritten. The button is available only in the desktop app.
 
 This installs spelling data; the document still needs to use French as its proofing language.
+
+## Add optional French verb forms (desktop)
+
+The spelling dictionary and grammar data are separate. For more verbs in the limited
+French agreement checks, use **File › Options › Proofing › Add French verb forms**.
+In French the button is **Ajouter les formes verbales françaises**. Wait for the ready
+message; the data is activated immediately and reused on later launches.
+
+This explicitly downloads the pinned Dicollecte 7.7 lexicon from Grammalecte (about
+12 MB compressed, 55 MB text), under MPL 2.0 with its README. Archive, text and README
+hashes are verified. Existing manual files take precedence and are never overwritten;
+incomplete or corrupt managed files are reported. Failed downloads can be retried.
+Only one French proofing installation runs at a time. No startup download or document
+upload is introduced. This adds verb forms for the existing bounded rules; it does not
+provide general French grammar, gender/number agreement or contextual homophones.
+See [French proofing scope and pinned sources](french-proofing.md#personal-cleft-agreement-and-optional-morphology).
 
 ## Which files each language needs
 
@@ -183,6 +199,7 @@ Never commit dictionary files to this repository: they stay on the user's system
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-20 | minor | Explicit desktop French verb-form data installation: pinned MPL-2.0 archive, bounded ZIP members, atomic activation, retained manual files, shared installation interlock and live reload; no general-grammar or readiness-estimate claim |
 | 2026-10-20 | minor | Desktop download button for French: verified files, retry, immediate activation and saved preferences |
 | 2026-10-20 | minor | French file names, Windows installation, other platforms, proofing language selection and explicit real-dictionary gate |
 | 2026-10-18 | trivial | ISO 8859-1 (`SET ISO8859-1`) dictionaries are read, so the original VERO `pt_BR` works without converting it to UTF-8 (#2824) |

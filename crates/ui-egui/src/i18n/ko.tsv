@@ -2552,3 +2552,13 @@ preview	Title	제목
 	Dictionary installation failed: {reason}	사전 설치 실패: {reason}
 	The dictionary download stopped. Please try again.	사전 다운로드가 중단되었습니다. 다시 시도하세요.
 	The dictionaries folder changed during installation. Please try again.	설치 중 사전 폴더가 변경되었습니다. 다시 시도하세요.
+
+# Optional French finite-verb data installation
+	Add French verb forms	프랑스어 동사 형태 추가
+	The French verb forms are ready.	프랑스어 동사 형태가 준비되었습니다.
+	The French grammar data download stopped. Please try again.	프랑스어 문법 데이터 다운로드가 중단되었습니다. 다시 시도하세요.
+	French grammar data installation failed: {reason}	프랑스어 문법 데이터를 설치하지 못했습니다: {reason}
+	A French proofing installation is already in progress.	프랑스어 교정 도구를 이미 설치하고 있습니다.
+	French grammar data	프랑스어 문법 데이터
+	More verbs for French agreement checks (12 MB download).	프랑스어 일치 검사에 사용할 동사를 추가합니다(12MB 다운로드).
+	Adding French verb forms…	프랑스어 동사 형태 추가 중…

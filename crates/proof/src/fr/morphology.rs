@@ -246,7 +246,21 @@ impl Lexicon {
     }
 }
 
-static CACHE: RwLock<Option<Arc<Lexicon>>> = RwLock::new(None);
+/// Status of the data actually loaded for checking, not merely a file's presence.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DataStatus {
+    Missing,
+    Ready { path: PathBuf, analyses: usize },
+    Unreadable { path: PathBuf, reason: String },
+}
+
+#[derive(Clone)]
+struct Loaded {
+    lexicon: Arc<Lexicon>,
+    status: DataStatus,
+}
+
+static CACHE: RwLock<Option<Loaded>> = RwLock::new(None);
 
 /// Find optional morphology data in one dictionaries folder, preserving manual-file precedence.
 pub fn find_in(folder: &Path) -> Option<PathBuf> {
@@ -270,18 +284,31 @@ pub fn reload() {
     crate::hunspell::clear_load_error(ERROR_KEY);
 }
 
+/// Validate on first use and then report the cached state until a folder reload.
+/// No network access. Missing or unreadable optional data keeps the builtin rules available.
+pub fn data_status() -> DataStatus {
+    current().status
+}
+
 pub(super) fn lexicon() -> Arc<Lexicon> {
-    if let Some(lexicon) = CACHE.read().unwrap_or_else(|e| e.into_inner()).as_ref() {
-        return lexicon.clone();
+    current().lexicon
+}
+
+fn current() -> Loaded {
+    if let Some(loaded) = CACHE.read().unwrap_or_else(|e| e.into_inner()).as_ref() {
+        return loaded.clone();
     }
     let mut cache = CACHE.write().unwrap_or_else(|e| e.into_inner());
     cache
         .get_or_insert_with(|| {
-            let loaded = installed_path().and_then(|path| {
-                let result = std::fs::File::open(&path).map_err(|e| e.to_string()).and_then(Lexicon::from_reader);
-                crate::hunspell::note_load(ERROR_KEY, &path, result).ok()
-            });
-            Arc::new(loaded.unwrap_or_else(Lexicon::builtins))
+            let Some(path) = installed_path() else {
+                return Loaded { lexicon: Arc::new(Lexicon::builtins()), status: DataStatus::Missing };
+            };
+            let result = std::fs::File::open(&path).map_err(|e| e.to_string()).and_then(Lexicon::from_reader);
+            match crate::hunspell::note_load(ERROR_KEY, &path, result) {
+                Ok(lexicon) => Loaded { status: DataStatus::Ready { path, analyses: lexicon.len() }, lexicon: Arc::new(lexicon) },
+                Err(reason) => Loaded { lexicon: Arc::new(Lexicon::builtins()), status: DataStatus::Unreadable { path, reason } },
+            }
         })
         .clone()
 }
