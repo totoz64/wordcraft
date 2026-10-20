@@ -120,7 +120,7 @@ pub fn is_correct_with(d: &AffixDict, word: &str) -> bool {
     if d.is_empty() {
         return true; // no French dictionary installed: no spelling marks
     }
-    let w = word.trim_matches(|c: char| !c.is_alphanumeric() && c != '\'' && c != '’');
+    let w = word.trim_matches(|c: char| !c.is_alphanumeric() && !crate::is_combining_mark(c) && c != '\'' && c != '’');
     let w = w.trim_matches(['\'', '’']).replace('’', "'");
     let n = w.chars().count();
     if n <= 1 || w.chars().any(|c| c.is_ascii_digit()) || !w.chars().any(char::is_alphabetic) {
@@ -144,7 +144,7 @@ pub fn is_correct_with(d: &AffixDict, word: &str) -> bool {
         return true;
     }
     // Compounds the dictionary doesn't list (`va-t-il`, `maison-école`): every part.
-    w.contains('-') && w.split('-').all(|p| p.chars().count() <= 1 || known(d, p))
+    w.contains('-') && w.split('-').all(|p| !p.is_empty() && (p.chars().count() <= 1 || known(d, p)))
 }
 
 /// Is `w` in the dictionary (any elision included) or the user dictionary?
