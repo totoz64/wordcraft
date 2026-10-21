@@ -16,6 +16,8 @@ mod agreement;
 mod conjugation;
 pub mod grammar;
 pub mod morphology;
+mod nominal_agreement;
+mod nominal_subjects;
 mod subject_agreement;
 mod suggest;
 #[cfg(test)]

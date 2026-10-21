@@ -15,6 +15,7 @@ on:
       - 'crates/engine/tests/fr_mixed_context.rs'
       - 'crates/engine/tests/french_local_language_boundaries.rs'
       - 'crates/engine/tests/french_explicit_autonym_context.rs'
+      - 'crates/engine/tests/french_nominal_review.rs'
       - 'docs/french-proofing.md'
       - 'docs/spelling-dictionaries.md'
       - '.github/workflows/french-proofing.yml'
@@ -33,6 +34,7 @@ on:
       - 'crates/engine/tests/fr_mixed_context.rs'
       - 'crates/engine/tests/french_local_language_boundaries.rs'
       - 'crates/engine/tests/french_explicit_autonym_context.rs'
+      - 'crates/engine/tests/french_nominal_review.rs'
       - 'docs/french-proofing.md'
       - 'docs/spelling-dictionaries.md'
       - '.github/workflows/french-proofing.yml'
@@ -108,8 +110,8 @@ jobs:
       - name: Synthetic proofing and non-French compatibility regressions
         run: cargo test --locked -p wordcraft-proof
 
-      # Optional linguistic data only (MPL-2.0), never Grammalecte's GPL grammar code.
-      - name: Download and verify French finite morphology 7.7
+      # Optional verb and nominal linguistic data only (MPL-2.0), never Grammalecte's GPL grammar code.
+      - name: Download and verify French verb and nominal morphology 7.7
         env:
           WORDCRAFT_FRENCH_MORPHOLOGY_DIR: ${{ runner.temp }}/wordcraft-french-morphology
         shell: python
@@ -238,6 +240,11 @@ jobs:
           WORDCRAFT_DICTIONARIES: ${{ runner.temp }}/wordcraft-french-dictionary
         run: cargo test --locked -p wordcraft-proof --test french_mixed_context_real -- --ignored
 
+      - name: Required real French nominal agreement gate
+        env:
+          WORDCRAFT_DICTIONARIES: ${{ runner.temp }}/wordcraft-french-dictionary
+        run: cargo test --locked -p wordcraft-proof --test french_nominal_real -- --ignored
+
       - name: Mixed French grammar review context
         run: cargo test --locked -p wordcraft-engine --test fr_mixed_context
 
@@ -246,3 +253,6 @@ jobs:
 
       - name: Explicit French word mentions and local review
         run: cargo test --locked -p wordcraft-engine --test french_explicit_autonym_context
+
+      - name: Nominal French agreement Review, languages and undo
+        run: cargo test --locked -p wordcraft-engine --test french_nominal_review

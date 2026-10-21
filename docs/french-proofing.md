@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-21 · **Change:** minor (explicit French word mentions and local protection); previously minor (French local grammar respects language boundaries); previously minor (bounded French grammar deciding-language context); previously minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660); previously minor (French personal-subject agreement; baseline #1660); previously trivial (preserve explicit written-pronoun examples); previously trivial (French suggestion priority after language filtering); previously minor (French reflexive auxiliary correction); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-21 · **Change:** minor (bounded French nominal agreement and common-noun subjects); previously minor (explicit French word mentions and local protection); previously minor (French local grammar respects language boundaries); previously minor (bounded French grammar deciding-language context); previously minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660); previously minor (French personal-subject agreement; baseline #1660); previously trivial (preserve explicit written-pronoun examples); previously trivial (French suggestion priority after language filtering); previously minor (French reflexive auxiliary correction); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
 
 ## Shared-engine compatibility and reproducible CI
 
@@ -36,10 +36,11 @@ Document proofing reads the Canadian region only in its region position, after a
 script (`fr-CA`, `fr-Latn-CA`). Extension data such as `fr-u-ca-gregory` and `fr-x-ca`
 does not select Quebec typography.
 
-Subject–verb agreement is limited to initial personal subjects and the personal-cleft cases
-below. Noun-phrase/later-clause agreement, gender/number agreement and contextual homophones
-are not generally checked. No automatic document-wide
-correction is applied.
+Subject–verb agreement is limited to the initial personal-subject and personal-cleft cases
+below, plus simple determiner-led common-noun subjects at clear sentence starts. A bounded
+nominal rule also suggests some determiner/noun/adjective agreements. These additions do not
+analyse arbitrary later clauses, coordinated subjects, general gender/number agreement or
+contextual homophones. No automatic document-wide correction is applied.
 
 ## Infinitive/participle and elision checks
 
@@ -111,6 +112,85 @@ Engine integration exercises F7, Change, Undo and **Mark grammar errors as you t
 It also fixes `Je avais déjà écrire` in two steps, verifying recomputed UTF-8 ranges after elision
 and two undos restoring the original text. Suggestions never rewrite the document automatically.
 
+## Simple nominal groups and common-noun subjects
+
+Both French regions use the same optional external lexical file for these additions. An
+existing installation through **Add French verb forms** is reused: there is no new download,
+button, startup request or bundled data. The original reader retains a separate bounded
+common-noun/adjective index with lemma, gender and number. `nom adj` combinations, epicene
+genders and invariant numbers retain all their readings; an unknown reading stays undecided.
+Verb-tagged participial adjectives are outside this initial nominal index. The pinned file's
+274,427 finite analyses remain a separate measure; an independent index count is 166,897
+nominal analyses, not a count of rules, corrected errors or grammar accuracy.
+
+The parser accepts a determiner plus a known common noun, optionally with one adjective before
+or after it, at the paragraph beginning or a clear later sentence beginning. Abbreviations,
+ellipses, dialogue, quotations, code and uncertain boundaries stay outside its scope. It does
+not skip negation, clitics, coordination, relative clauses or intervening complements. This
+bounded use follows the OQLF descriptions of the [noun and nominal group](https://vitrinelinguistique.oqlf.gouv.qc.ca/24321/la-grammaire/la-grammaire-actuelle/les-classes-de-mots-et-les-groupes/le-nom-et-le-groupe-nominal)
+and [agreement within a nominal group](https://www.oqlf.gouv.qc.ca/francisation/ordres_prof/capsules-grammaticales/accord-groupe-nominal.aspx).
+Examples here are original applications of these principles, not borrowed grammar code.
+
+For nominal agreement:
+
+- `Les petite maisons` can suggest `petites`, and `Une petit maison` can suggest `petite`.
+  The determiner and head noun must already share a valid gender/number reading before an
+  adjective correction is offered. Suggestions come from recorded forms of the same lemma
+  and part of speech; there is no guessed ending. Any compatible current reading stays quiet.
+- `Les maison` can suggest `maisons` while retaining the noun's gender. Here the written
+  determiner supplies number: this is one possible repair, not a claim to know whether the
+  writer intended a singular or plural group. Suggestions never change text automatically.
+- `Un maison` can suggest `Une`, and `La jardin` can suggest `Le`, only for supported fixed
+  singular determiner paradigms and a uniquely recorded noun gender/number. Generating an
+  elided article, guessing an unfamiliar h, or changing a possessive such as `mon amie` is
+  declined. The `ce/cet/cette` alternatives use the immediate following word's sound,
+  including a preposed adjective, with the existing explicit onset safeguards.
+
+Compound colours (`Les robes bleu clair`, `Les robes bleu Zora`), positional/adverbial
+adjectives such as `demi`, `nu` and `feu`, variable-gender `gens`/`amours`/`délices`/`orgues`,
+unknown forms, unmatched group parses and ambiguous punctuation are deliberately declined.
+This is not general noun-phrase, participle or adjective analysis.
+Multiple recorded adjective alternatives and generated masculine-singular positional forms
+such as `beau/bel`, `vieux/vieil`, `nouveau/nouvel`, `fou/fol` and `mou/mol` are declined.
+The rule does not infer these position-dependent spellings, even from an incomplete custom
+file; supported unambiguous suggestions such as `Une beau maison` → `belle` remain available.
+
+An already compatible noun followed by a possible finite verb keeps its short-subject
+interpretation (`La vieille dit bonjour`). Unparsed bare noun/noun continuations stay quiet.
+With plural determiners, the five explicit forms `cent`, `mil`, `mille`, `neuf` and `zéro`
+retain their possible cardinal reading (`Les neuf petites`, `Ces mille maisons`), rather
+than being inflected as ordinary nouns or adjectives.
+
+For subject agreement, `Les enfants joue` can suggest `jouent`. The determiner and head noun
+must agree on one number, with at most one recorded, number-compatible adjective. The finite
+verb must immediately follow that simple group. Suggestions preserve a recorded lemma and
+possible tense/mood; they do not select an intended tense. A valid finite reading or a matching
+nominal/adjectival interpretation remains unmarked, so labels such as `Les enfants guides.`
+are not forced into clauses. When an otherwise mismatching finite form also has a nonverbal
+reading, only a bare verb or a complete tail of at most eight words from an original explicit
+11-adverb list is admitted: `dehors`, `ici`, `là`, `hier`, `demain`, `bientôt`, `souvent`,
+`toujours`, `rarement`, `vite`, `encore`. An unfamiliar complement stays quiet. This narrow
+exception supports `Les enfants joue dehors` without interpreting `Les voitures modèle sport`
+as a verb error; it is not a general part-of-speech parser.
+The four common nominal epithets `type`, `modèle`, `pilote` and `cadre`, including their
+plurals, do not license a verb correction. This preserves an ambiguous nominal reading even
+when its own written agreement is wrong; it is not a claim that every declined label is
+correct French. Primary descriptions: [Académie, type](https://www.dictionnaire-academie.fr/article/A9T2786),
+[Académie, modèle](https://www.dictionnaire-academie.fr/article/A9M2435),
+[Clés de la rédaction, pilote](https://nos-langues.canada.ca/fr/cles-de-la-redaction/pilote),
+and [Juridictionnaire, cadre](https://nos-langues.canada.ca/fr/juridictionnaire/cadre).
+
+Each suggestion carries the actual determiner/head/modifier or subject/verb context it uses,
+including any deciding homograph-tail adverbs. A postposed adjective with a following word
+also needs that word's finite reading; it and the intervening gap belong to the deciding
+context. These words must all belong to one French region
+before the suggestion is accepted. Adjacent runs in the same region merge; French/English,
+uncovered and fr-FR/fr-CA boundaries cannot supply deciding words. Original UTF-8 text and byte
+ranges remain intact, unrelated errors remain available, and disabling grammar leaves spelling
+behavior intact. Regression requirements cover synthetic ambiguous/quiet cases, the pinned real
+file, both French regions and Review/Change/Undo. These requirements do not establish native,
+three-system, maintainer, merge or release validation; those results must name their source.
+
 ## Direct personal-subject agreement
 
 At a paragraph's beginning, `je`, `tu`, `il`, `elle`, `on`, `nous`, `vous`, `ils` and `elles`
@@ -160,8 +240,9 @@ all supported finite tenses/moods remain available. Any valid person reading sta
 The rule preserves overlapping moods and can offer several alternatives; it does not infer
 the intended tense/mood from the whole sentence or turn an infinitive into a guessed tense.
 
-Nonverbal rows and adjectival-participle readings are retained only as bounded homograph
-facts separate from the finite index. They do not increase the public 274,427 finite-analysis
+For this personal-subject rule, nonverbal rows and adjectival-participle readings remain
+bounded homograph facts separate from the finite index. The newer nominal rules also retain
+common-noun/adjective morphology in their own index. They do not increase the public 274,427 finite-analysis
 count. Positive plural subjects followed by ambiguous non-auxiliary forms are declined:
 `Nous guides de montagne accompagnons ce groupe`, `Vous élèves de ce collège savez la réponse`
 and `Nous abasourdis restons sans voix` must not become guidons, élevez or abasourdissons.
@@ -253,8 +334,9 @@ reader does not use Grammalecte grammar code. The real-data gate currently reads
 274,427 finite analyses, kept separate from the new infinitive/canonical-participle index;
 nouns and imperatives are not retained as verbal readings. Canonical participles are masculine
 singular or invariant forms, not guessed agreement variants. File size, line length, retained
-row count and index fan-out are bounded across finite and nonfinite records; the separate nonverbal-form
-set is bounded too and keeps only finite homographs after parsing. The public finite
+row count and index fan-out are bounded across finite, nonfinite and separate nominal records;
+nominal feature lists exceeding 32 entries are rejected rather than silently truncated. The
+separate nonverbal-form set is bounded too and keeps only finite homographs after parsing. The public finite
 analysis count and installer readiness remain unchanged.
 An unreadable optional file records a diagnostic through `fr::morphology::load_error()`
 and leaves the builtin rules available. A successful reload clears the diagnostic.
@@ -294,6 +376,7 @@ For the real dictionary, set `WORDCRAFT_DICTIONARIES` to its folder, then run:
 
 ```sh
 cargo test --locked -p wordcraft-proof --test french_dictionary -- --ignored
+cargo test --locked -p wordcraft-proof --test french_nominal_real -- --ignored
 cargo test --locked -p wordcraft french_dictionary -- --include-ignored
 cargo test --locked -p wordcraft-ui-egui --test french_dictionary_setup
 ```
@@ -317,7 +400,7 @@ declaring a workflow here does not mean its remote runs have passed.
 | 1 | Integrate this baseline and its installation guide | Current-main diff, local CI, real dictionary gate, native UI smoke test; maintainer review and remote checks before merge |
 | 2 | Add French AutoFormat for spaces around `; : ! ?` and `« »` | Typing-command regression cases for fr-FR and fr-CA, ordinary/non-breaking spaces, URLs, times, undo and pasted text; update `typing-parity.md` |
 | 3 | Expand the regression corpus from reported errors | One short synthetic sentence per failure, expected suggestions or explicit quiet result, region and dictionary version; no personal documents or unreviewed data committed |
-| 4 | Add agreement and homophone rules with linguistic data | A documented data/licence choice, positive and quiet cases, bounded runtime, and false-positive measurements before each rule is enabled |
+| 4 | Expand beyond the bounded nominal/subject rules and add contextual homophones | A documented data/licence choice, positive and quiet cases, bounded runtime, and false-positive measurements before each rule is enabled |
 
 ## Reporting a French correction problem
 
@@ -334,6 +417,7 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-21 | minor | Bounded French determiner/noun/adjective agreement and simple common-noun subjects at clear sentence starts; reuse optional licensed data, preserve ambiguous readings and exact language contexts; no general-grammar or readiness-estimate claim |
 | 2026-10-21 | minor | Explicit French un/le/ce mot mentions retain their written pronoun; the validated same-region marker protects only the initial copula, leaving unrelated local elisions available; existing broad candidate guards and general-grammar limits remain unchanged |
 | 2026-10-20 | minor | French elision, repeated-word and quoted-text replacements require their own complete language context; local French checks after a foreign prefix remain available; original UTF-8 text and broader grammar limits retained |
 | 2026-10-20 | minor | Require one French-region deciding context for existing personal-subject, personal-cleft and avoir suggestions; retain unrelated foreign tails, original UTF-8 ranges and independent spelling/elision precedence; no general-grammar claim |

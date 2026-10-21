@@ -1,4 +1,4 @@
-//! French verb morphology, read from the external MPL-2.0 Dicollecte lexicon.
+//! French verb and bounded nominal morphology, read from the external MPL-2.0 Dicollecte lexicon.
 //!
 //! This reader is original Rust code. It consumes the published TSV data format, not any
 //! Grammalecte grammar code. The optional file is never bundled. Without it, four small
@@ -95,6 +95,27 @@ struct Record {
     auxiliary: u8,
 }
 
+/// Four explicit agreement readings: masculine/feminine singular, masculine/feminine plural.
+/// Their correlation is preserved when a surface form has several lexical analyses.
+pub(super) const NOMINAL_SINGULAR: u8 = 0b0011;
+pub(super) const NOMINAL_PLURAL: u8 = 0b1100;
+pub(super) const NOMINAL_MASCULINE: u8 = 0b0101;
+pub(super) const NOMINAL_FEMININE: u8 = 0b1010;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum NominalPart {
+    Noun,
+    Adjective,
+}
+
+#[derive(Debug)]
+struct NominalRecord {
+    form: String,
+    lemma: u32,
+    part: NominalPart,
+    features: u8,
+}
+
 /// Immutable compact indexes: a form may have several lemmas, tenses and persons.
 #[derive(Debug, Default)]
 pub struct Lexicon {
@@ -103,6 +124,9 @@ pub struct Lexicon {
     by_lemma: Vec<(u32, usize)>,
     finite_len: usize,
     nonverbal: HashSet<String>,
+    nominal_lemmas: Vec<String>,
+    nominal_records: Vec<NominalRecord>,
+    nominal_by_lemma: Vec<(u32, usize)>,
 }
 
 /// In the pinned 7.7 annotation, the last two slots concern être/avoir. `zz` does
@@ -180,6 +204,8 @@ impl Lexicon {
         let mut lemma_ids = HashMap::<String, u32>::new();
         let mut lemma_counts = Vec::<usize>::new();
         let mut retained = 0usize;
+        let mut nominal_ids = HashMap::<String, u32>::new();
+        let mut nominal_counts = Vec::<usize>::new();
         loop {
             line.clear();
             let read = (&mut input).take(MAX_LINE as u64 + 1).read_line(&mut line).map_err(|e| format!("French morphology: {e}"))?;
@@ -217,6 +243,44 @@ impl Lexicon {
             let Some(tag) = features.next() else { continue };
             if !tag.starts_with('v') {
                 lexicon.remember_nonverbal(form, line_number)?;
+                let tags: Vec<&str> = fields.get(4).copied().unwrap_or_default().split_whitespace().take(33).collect();
+                if tags.len() > 32 {
+                    return Err(format!("Too many French nominal features at line {line_number}"));
+                }
+                if tags.contains(&"nom") || tags.contains(&"adj") {
+                    if lemma.is_empty() || lemma.len() > MAX_WORD_BYTES {
+                        return Err(format!("Invalid French nominal lemma at line {line_number}"));
+                    }
+                    let id = if let Some(&id) = nominal_ids.get(lemma) {
+                        id
+                    } else {
+                        let id = u32::try_from(lexicon.nominal_lemmas.len()).map_err(|_| "Too many French nominal lemmas")?;
+                        nominal_ids.insert(lemma.to_owned(), id);
+                        lexicon.nominal_lemmas.push(lemma.to_owned());
+                        nominal_counts.push(0);
+                        id
+                    };
+                    let gender = if tags.contains(&"epi") {
+                        NOMINAL_MASCULINE | NOMINAL_FEMININE
+                    } else {
+                        (if tags.contains(&"mas") { NOMINAL_MASCULINE } else { 0 }) | (if tags.contains(&"fem") { NOMINAL_FEMININE } else { 0 })
+                    };
+                    let number = if tags.contains(&"inv") {
+                        NOMINAL_SINGULAR | NOMINAL_PLURAL
+                    } else {
+                        (if tags.contains(&"sg") { NOMINAL_SINGULAR } else { 0 }) | (if tags.contains(&"pl") { NOMINAL_PLURAL } else { 0 })
+                    };
+                    let count = usize::try_from(id).ok().and_then(|i| nominal_counts.get_mut(i)).ok_or("Invalid French nominal lemma index")?;
+                    for (name, part) in [("nom", NominalPart::Noun), ("adj", NominalPart::Adjective)] {
+                        if tags.contains(&name) {
+                            *count = count.saturating_add(1);
+                            if *count > MAX_LEMMA_RECORDS || lexicon.nominal_records.len() >= MAX_RECORDS {
+                                return Err("French nominal morphology exceeds its entry limit".into());
+                            }
+                            lexicon.nominal_records.push(NominalRecord { form: form.to_owned(), lemma: id, part, features: gender & number });
+                        }
+                    }
+                }
                 continue;
             }
             let (mut tenses, mut persons, mut imperative) = (0u8, 0u8, false);
@@ -292,6 +356,15 @@ impl Lexicon {
                 return Err("French morphology has too many analyses for one form".into());
             }
         }
+        let mut previous = "";
+        let mut count = 0usize;
+        for record in &lexicon.nominal_records {
+            count = if record.form == previous { count.saturating_add(1) } else { 1 };
+            previous = &record.form;
+            if count > MAX_FORM_RECORDS {
+                return Err("French morphology has too many nominal analyses for one form".into());
+            }
+        }
         Ok(lexicon)
     }
 
@@ -310,6 +383,10 @@ impl Lexicon {
         self.finite_len = self.records.iter().filter(|record| record.tenses != 0).count();
         self.by_lemma = self.records.iter().enumerate().map(|(i, record)| (record.lemma, i)).collect();
         self.by_lemma.sort_unstable();
+        self.nominal_records.sort_unstable_by(|a, b| (&a.form, a.lemma, a.part as u8, a.features).cmp(&(&b.form, b.lemma, b.part as u8, b.features)));
+        self.nominal_records.dedup_by(|a, b| a.form == b.form && a.lemma == b.lemma && a.part == b.part && a.features == b.features);
+        self.nominal_by_lemma = self.nominal_records.iter().enumerate().map(|(i, record)| (record.lemma, i)).collect();
+        self.nominal_by_lemma.sort_unstable();
         // Only homographs of finite forms are needed to avoid treating a noun/apposition
         // as a verb. Nonverbal rows never become person/tense analyses or lemma records.
         let records = &self.records;
@@ -355,6 +432,91 @@ impl Lexicon {
         let start = self.records.partition_point(|record| record.form.as_str() < form);
         let end = self.records.partition_point(|record| record.form.as_str() <= form);
         self.records.get(start..end).unwrap_or_default()
+    }
+
+    fn nominal_analyses(&self, form: &str) -> &[NominalRecord] {
+        if form.len() > MAX_WORD_BYTES {
+            return &[];
+        }
+        let start = self.nominal_records.partition_point(|record| record.form.as_str() < form);
+        let end = self.nominal_records.partition_point(|record| record.form.as_str() <= form);
+        self.nominal_records.get(start..end).unwrap_or_default()
+    }
+
+    pub(super) fn nominal_features(&self, form: &str, part: NominalPart) -> Option<u8> {
+        let mut features = 0;
+        for record in self.nominal_analyses(form).iter().filter(|r| r.part == part) {
+            if record.features == 0 {
+                return None; // An unsupported reading cannot be silently discarded.
+            }
+            features |= record.features;
+        }
+        (features != 0).then_some(features)
+    }
+
+    /// Only a common noun with one recorded number establishes a nominal subject.
+    pub(super) fn unique_noun_number(&self, form: &str) -> Option<Person> {
+        let features = self.nominal_features(form, NominalPart::Noun)?;
+        match (features & NOMINAL_SINGULAR != 0, features & NOMINAL_PLURAL != 0) {
+            (true, false) => Some(Person::ThirdSingular),
+            (false, true) => Some(Person::ThirdPlural),
+            _ => None,
+        }
+    }
+
+    /// An incomplete nominal annotation cannot license treating a homograph as a verb.
+    pub(super) fn has_unknown_nominal_reading(&self, form: &str) -> bool {
+        self.nominal_analyses(form).iter().any(|record| record.features == 0)
+    }
+
+    pub(super) fn noun_matches_number(&self, form: &str, target: Person) -> bool {
+        let mask = match target {
+            Person::ThirdSingular => NOMINAL_SINGULAR,
+            Person::ThirdPlural => NOMINAL_PLURAL,
+            _ => return false,
+        };
+        self.nominal_features(form, NominalPart::Noun).is_some_and(|features| features & mask != 0)
+    }
+
+    pub(super) fn adjective_matches_number(&self, form: &str, target: Person) -> bool {
+        let mask = match target {
+            Person::ThirdSingular => NOMINAL_SINGULAR,
+            Person::ThirdPlural => NOMINAL_PLURAL,
+            _ => return false,
+        };
+        self.nominal_features(form, NominalPart::Adjective).is_some_and(|features| features & mask != 0)
+    }
+
+    /// Suggestions are attested forms of the same lexical lemma and part of speech.
+    /// Any supported current reading is preserved; no suffix or gender is inferred.
+    pub(super) fn nominal_forms(&self, form: &str, part: NominalPart, target: u8) -> Option<Vec<String>> {
+        let features = self.nominal_features(form, part)?;
+        if target == 0 || features & target != 0 {
+            return None;
+        }
+        let mut forms = Vec::new();
+        let mut found = false;
+        for original in self.nominal_analyses(form).iter().filter(|r| r.part == part) {
+            found = true;
+            let start = self.nominal_by_lemma.partition_point(|(lemma, _)| *lemma < original.lemma);
+            let end = self.nominal_by_lemma.partition_point(|(lemma, _)| *lemma <= original.lemma);
+            let mut covered = false;
+            for (_, index) in self.nominal_by_lemma.get(start..end).unwrap_or_default() {
+                if let Some(record) = self.nominal_records.get(*index)
+                    && record.part == part
+                    && record.features & target != 0
+                {
+                    covered = true;
+                    forms.push(record.form.as_str());
+                }
+            }
+            if !covered {
+                return None;
+            }
+        }
+        forms.sort_unstable();
+        forms.dedup();
+        if !found || forms.is_empty() || forms.len() > 8 { None } else { Some(forms.into_iter().map(str::to_owned).collect()) }
     }
 
     /// A finite person reading exists; this does not choose an intended mood or word sense.
@@ -794,5 +956,64 @@ mod tests {
         }
         let rows: Vec<_> = excessive.iter().map(|(form, lemma, tags)| (form.as_str(), lemma.as_str(), tags.as_str())).collect();
         assert!(Lexicon::from_reader(table(&rows).as_bytes()).is_err(), "non-finite analyses share the per-form input bound");
+    }
+    #[test]
+    fn nominal_readings_preserve_gender_number_correlation_and_invariants() {
+        let data = table(&[
+            ("joue", "jouer", "v1 ipre 3sg"),
+            ("mixte", "accord", "nom mas sg"),
+            ("mixte", "accord", "nom fem pl"),
+            ("mixtes", "accord", "nom mas pl"),
+            ("autre", "différent", "nom fem sg"),
+            ("autres", "différent", "nom fem pl"),
+            ("orange", "orange", "adj epi inv"),
+            ("enfants", "enfant", "nom epi pl"),
+        ]);
+        let lexicon = Lexicon::from_reader(data.as_bytes()).unwrap();
+        assert_eq!(lexicon.len(), 1);
+        assert_eq!(lexicon.nominal_features("mixte", NominalPart::Noun), Some(0b1001));
+        assert_eq!(lexicon.nominal_forms("mixte", NominalPart::Noun, 0b0100), Some(vec!["mixtes".into()]));
+        assert!(lexicon.nominal_forms("mixte", NominalPart::Noun, 0b1000).is_none(), "retain the feminine plural reading");
+        assert!(lexicon.nominal_forms("mixte", NominalPart::Noun, 0b0010).is_none(), "another lemma is never a suggestion");
+        assert!(lexicon.unique_noun_number("mixte").is_none(), "do not flatten correlated gender/number readings");
+        assert!(lexicon.nominal_forms("orange", NominalPart::Adjective, 0b1000).is_none());
+        assert!(lexicon.adjective_matches_number("orange", Person::ThirdPlural));
+        assert_eq!(lexicon.unique_noun_number("enfants"), Some(Person::ThirdPlural));
+        assert!(lexicon.noun_matches_number("enfants", Person::ThirdPlural));
+    }
+
+    #[test]
+    fn nominal_ambiguous_or_unsupported_readings_are_never_guessed() {
+        let data = table(&[
+            ("joue", "jouer", "v1 ipre 3sg"),
+            ("joue", "joue", "nom mas mystery"),
+            ("joue", "joue", "nom fem sg"),
+            ("joues", "joue", "nom fem pl"),
+            ("gris", "gris", "adj mas inv"),
+            ("gris", "autre", "adj mas sg"),
+            ("grise", "gris", "adj fem sg"),
+        ]);
+        let lexicon = Lexicon::from_reader(data.as_bytes()).unwrap();
+        assert!(lexicon.has_unknown_nominal_reading("joue"));
+        assert!(!lexicon.has_unknown_nominal_reading("absent"));
+        assert!(lexicon.nominal_features("joue", NominalPart::Noun).is_none());
+        assert!(lexicon.unique_noun_number("joue").is_none());
+        assert!(lexicon.nominal_forms("joue", NominalPart::Noun, NOMINAL_PLURAL).is_none());
+        assert!(lexicon.nominal_forms("gris", NominalPart::Adjective, NOMINAL_FEMININE).is_none(), "every lexical reading needs a target form");
+        assert!(lexicon.has_person_reading("joue", Person::ThirdSingular), "keep nominal and finite analyses separate");
+    }
+
+    #[test]
+    fn nominal_reader_bounds_features_and_index_fanout() {
+        let finite = ("joue", "jouer", "v1 ipre 3sg");
+        let excessive_tags = format!("nom mas sg {}", "unknown ".repeat(31));
+        assert!(Lexicon::from_reader(table(&[finite, ("nom", "nom", &excessive_tags)]).as_bytes()).is_err());
+        let mut excessive_lemma = vec![finite];
+        excessive_lemma.extend(vec![("nom", "nom", "nom mas sg"); MAX_LEMMA_RECORDS + 1]);
+        assert!(Lexicon::from_reader(table(&excessive_lemma).as_bytes()).is_err());
+        let lemmas: Vec<_> = (0..=MAX_FORM_RECORDS).map(|index| format!("nom{index}")).collect();
+        let mut excessive_form = vec![finite];
+        excessive_form.extend(lemmas.iter().map(|lemma| ("nom", lemma.as_str(), "nom mas sg")));
+        assert!(Lexicon::from_reader(table(&excessive_form).as_bytes()).is_err());
     }
 }
