@@ -356,7 +356,7 @@ fn abbreviation_or_number(prev: &str) -> bool {
 /// a closing quote (dialogue goes on: `« Tu viens ? » demanda-t-elle`), not before an inversion
 /// or a speech verb (`Quoi ? dit-il`, `— Viens ! cria-t-on`), and never in a `dialogue` line (one
 /// opening with a dash).
-fn ends_sentence(gap: &str, prev: &str, next: &str, dialogue: bool) -> bool {
+pub(super) fn ends_sentence(gap: &str, prev: &str, next: &str, dialogue: bool) -> bool {
     let closing = ['"', '”', '’', '\'', ')', '»', ']'];
     let t = gap.trim_start_matches(|c: char| c.is_whitespace() || is_fixed_space(c) || closing.contains(&c));
     let Some(end) = t.chars().next() else { return false };
@@ -510,11 +510,7 @@ pub fn check_in(text: &str, lang: ProofLang) -> Vec<Issue> {
 
 /// The mixed-language dispatcher must validate deciding contexts before suppressing
 /// conflicting elisions. The public single-language entry point keeps its precedence.
-pub(crate) fn check_in_preserving_conflicts(
-    text: &str,
-    lang: ProofLang,
-    context_is_french: impl FnOnce(&std::ops::Range<usize>) -> bool,
-) -> Vec<Issue> {
+pub(crate) fn check_in_preserving_conflicts(text: &str, lang: ProofLang, context_is_french: impl Fn(&std::ops::Range<usize>) -> bool) -> Vec<Issue> {
     check_in_impl(text, lang, true, context_is_french)
 }
 
@@ -522,7 +518,7 @@ fn check_in_impl(
     text: &str,
     lang: ProofLang,
     preserve_conflicting_elisions: bool,
-    context_is_french: impl FnOnce(&std::ops::Range<usize>) -> bool,
+    context_is_french: impl Fn(&std::ops::Range<usize>) -> bool,
 ) -> Vec<Issue> {
     let ws: Vec<(usize, usize)> = words(text);
     let mention = written_pronoun_context(text, &ws).filter(|mention| context_is_french(&mention.required));
@@ -547,6 +543,14 @@ fn check_in_impl(
                 v.retain(|old| !(old.message.starts_with("Élision") && old.start < subject.end && subject.start < old.end));
             }
             v.push(subject);
+        }
+    }
+    // Nominal rules carry their complete deciding context once, rather than
+    // reparsing the paragraph for every emitted issue. A foreign anchor must
+    // never license a French correction, even when the replaced word is French.
+    for (issue, context) in super::nominal_agreement::check(text, &ws).into_iter().chain(super::nominal_subjects::check(text, &ws)) {
+        if context_is_french(&context) {
+            v.push(issue);
         }
     }
     for i in &mut v {
