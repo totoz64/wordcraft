@@ -94,3 +94,43 @@ fn emoji_page_with(opts: &RenderOptions, cp: wordcraft_doc::CharProps) -> Option
     assert_eq!(boxes.len(), 2, "both emoji use the colour emoji font");
     Some((img, boxes))
 }
+
+/// A text symbol must not carry its monochrome fallback into the following default emoji.
+#[cfg(windows)]
+#[test]
+fn emoji_after_a_text_symbol_chooses_colour_without_changing_explicit_fonts() {
+    let db = FontDb::global();
+    if !db.has_family("Segoe UI Symbol") || !db.has_family("Segoe UI Emoji") {
+        eprintln!("skipped: Windows symbol and colour emoji fonts unavailable");
+        return;
+    }
+    let mono = db.face("Segoe UI Symbol", "Regular");
+    let colour = db.face("Segoe UI Emoji", "Regular");
+    if !mono.covers('☒') || !mono.covers('✅') || colour.color_glyph(colour.glyph_for('✅'), 64.0).is_none() {
+        eprintln!("skipped: installed Windows fonts lack the required symbol/colour glyph coverage");
+        return;
+    }
+    let segments = |text: &str, font: &str| {
+        let cp = wordcraft_doc::CharProps { font: Some(font.into()), ..Default::default() };
+        let mut doc = Document::from_text("x");
+        doc.body = vec![wordcraft_doc::para_block(wordcraft_doc::Paragraph::with_text(text, cp))];
+        let result = layout(&doc, &mut LayoutCache::new(), &LayoutOptions::default());
+        page_display(&doc, &result.pages[0], &DisplayOptions::default())
+            .into_iter()
+            .filter_map(|d| if let Draw::Glyphs { face, text, .. } = d { Some((text, face.family.clone())) } else { None })
+            .collect::<Vec<_>>()
+    };
+    for primary in ["Source Sans 3", "Source Serif 4"] {
+        for text in ["☒✅", "✅☒", "☒ ✅", "A☒✅B"] {
+            let drawn = segments(text, primary);
+            let emoji_faces: Vec<_> = drawn.iter().filter(|(s, _)| s.contains('✅')).map(|(_, f)| f.as_str()).collect();
+            assert!(!emoji_faces.is_empty(), "emoji has a displayed segment: {text:?}");
+            assert!(emoji_faces.iter().all(|f| COLOR_EMOJI.contains(f)), "{primary}: {text:?} uses {drawn:?}");
+            for letter in text.chars().filter(|c| matches!(*c, 'A' | 'B')) {
+                assert!(drawn.iter().any(|(s, f)| s.contains(letter) && f == primary), "{letter} keeps {primary}: {drawn:?}");
+            }
+        }
+    }
+    let explicit = segments("☒✅", "Segoe UI Symbol");
+    assert!(explicit.iter().any(|(s, f)| s.contains('✅') && f == "Segoe UI Symbol"), "an explicit covering font keeps priority: {explicit:?}");
+}
