@@ -818,9 +818,9 @@ pub fn check_text_with(text: &str, spans: &[(Range<usize>, ProofLang)], opts: &O
                     continue;
                 }
             }
-            if matches!(lang, ProofLang::Fr | ProofLang::FrCa) && fr::grammar::is_personal_subject_issue(&issue) {
-                // Spelling priority still applies only to the replaced personal
-                // prefix, after its full grammatical context has been accepted.
+            if matches!(lang, ProofLang::Fr | ProofLang::FrCa) && fr::grammar::has_subject_replacement_priority(text, &issue) {
+                // Spelling priority applies only to the replaced subject prefix,
+                // after its full grammatical context has been accepted.
                 accepted_french_subject_ranges.push((lang, issue.start..issue.end));
                 v.retain(|old| old.kind != IssueKind::Spelling || old.lang != lang || old.start < issue.start || old.end > issue.end);
             }
