@@ -454,12 +454,19 @@ fn deleted_text_adds_no_line_break_opportunity_without_markup() {
     // "xx ab\u{ad}cdef" in a column where "xx ab-" and "abcdef" fit but "xx abcdef" does not; only
     // the soft hyphen (5..7) is track-deleted.
     let mut d = Document::from_text("xx ab\u{ad}cdef");
+    // The 40pt column is calibrated to this bundled face, independent of system substitutes.
+    d.styles.default_chr.font = Some("Source Sans 3".into());
     d.format_range(&Pos::body(0, 5), &Pos::body(0, 7), &|c| c.del = Some(0)).unwrap();
     d.format_paragraphs(&Pos::body(0, 0), &Pos::body(0, 0), &|p| p.indent_right = Some(468.0 - 40.0)).unwrap();
     let line_starts = |hide_deleted: bool| {
         let l = layout(&d, &mut LayoutCache::new(), &LayoutOptions { hide_deleted, ..Default::default() });
         let Some(Placed::Lines { para, .. }) = l.pages[0].items.iter().find(|i| matches!(i, Placed::Lines { .. })) else { panic!() };
-        para.lines.iter().map(|l| para.clusters.get(l.c0).map_or(usize::MAX, |c| c.start)).collect::<Vec<_>>()
+        let starts = para.lines.iter().map(|l| para.clusters.get(l.c0).map_or(usize::MAX, |c| c.start)).collect::<Vec<_>>();
+        eprintln!(
+            "deleted_text_adds_no_line_break_opportunity_without_markup: hide_deleted={hide_deleted} fonts={:?} starts={starts:?}",
+            para.styles.iter().map(|s| (&s.rc.font, &s.face.family, s.size)).collect::<Vec<_>>()
+        );
+        starts
     };
     // With markup the word breaks at the (deleted) soft hyphen.
     assert_eq!(line_starts(false), vec![0, 7]);
@@ -490,13 +497,20 @@ fn hidden_text_adds_no_line_break_opportunity_when_not_shown() {
     // but "xx abcdef" does not. Measured in Word (hidden text not printed): "xx" / "abcdef" both times.
     for hidden in ["\u{ad}", " "] {
         let mut d = Document::from_text(&format!("xx ab{hidden}cdef"));
+        // The 40pt column is calibrated to this bundled face, independent of system substitutes.
+        d.styles.default_chr.font = Some("Source Sans 3".into());
         let end = 5 + hidden.len();
         d.format_range(&Pos::body(0, 5), &Pos::body(0, end), &|c| c.hidden = Some(true)).unwrap();
         d.format_paragraphs(&Pos::body(0, 0), &Pos::body(0, 0), &|p| p.indent_right = Some(468.0 - 40.0)).unwrap();
         let line_starts = |show_hidden: bool| {
             let l = layout(&d, &mut LayoutCache::new(), &LayoutOptions { show_hidden, ..Default::default() });
             let Some(Placed::Lines { para, .. }) = l.pages[0].items.iter().find(|i| matches!(i, Placed::Lines { .. })) else { panic!() };
-            para.lines.iter().map(|l| para.clusters.get(l.c0).map_or(usize::MAX, |c| c.start)).collect::<Vec<_>>()
+            let starts = para.lines.iter().map(|l| para.clusters.get(l.c0).map_or(usize::MAX, |c| c.start)).collect::<Vec<_>>();
+            eprintln!(
+                "hidden_text_adds_no_line_break_opportunity_when_not_shown: show_hidden={show_hidden} fonts={:?} starts={starts:?}",
+                para.styles.iter().map(|s| (&s.rc.font, &s.face.family, s.size)).collect::<Vec<_>>()
+            );
+            starts
         };
         // Shown, the word breaks at the hidden soft hyphen or space.
         assert_eq!(line_starts(true), vec![0, end], "{hidden:?}");
@@ -5144,7 +5158,26 @@ fn wrapped_shape_doc(kind: wordcraft_doc::para::ShapeKind, w: f32, h: f32, float
 #[test]
 fn tight_wrap_follows_an_ellipse() {
     use wordcraft_doc::para::{Float, ShapeKind, Wrap};
-    let spans = |wrap| line_spans(&lay(&wrapped_shape_doc(ShapeKind::Ellipse, 160.0, 160.0, Float { wrap, ..Default::default() })));
+    let spans = |wrap| {
+        let mut d = wrapped_shape_doc(ShapeKind::Ellipse, 160.0, 160.0, Float { wrap, ..Default::default() });
+        // Fixed vertical sampling bands require the same bundled font metrics on every system.
+        d.styles.default_chr.font = Some("Source Sans 3".into());
+        let l = lay(&d);
+        let fonts: Vec<_> = l
+            .pages
+            .iter()
+            .flat_map(|p| &p.items)
+            .filter_map(|i| match i {
+                Placed::Lines { para, .. } => Some(para),
+                _ => None,
+            })
+            .flat_map(|p| &p.styles)
+            .map(|s| (&s.rc.font, &s.face.family, s.size))
+            .collect();
+        let spans = line_spans(&l);
+        eprintln!("tight_wrap_follows_an_ellipse: wrap={wrap:?} fonts={fonts:?} spans={spans:?}");
+        spans
+    };
     let (square, tight, through) = (spans(Wrap::Square), spans(Wrap::Tight), spans(Wrap::Through));
     // Square: every line beside the shape starts past its frame and distance from text.
     assert!(square.iter().filter(|l| l.0 < 160.0).all(|l| l.2 >= 169.0 - 0.01), "{square:?}");

@@ -947,8 +947,9 @@ impl<'a> Builder<'a> {
                 // The run's one substitute face for a missing Thai font (#1549).
                 _ if !c.is_control() && c != SOFT_HYPHEN && run_face.is_some_and(|f| f.covers(dc)) => run_face,
                 _ if prim.covers(dc) || c.is_whitespace() || c.is_control() || c == SOFT_HYPHEN => None,
-                // Stay in the fallback face the word started in while it covers the letters.
-                Some(SegKey { face: Some(f), .. }) if f.covers(dc) => Some(f),
+                // Keep a word's fallback for its letters, but let an emoji-by-default character
+                // following a monochrome symbol choose its preferred colour family.
+                Some(SegKey { face: Some(f), .. }) if f.covers(dc) && !f.needs_colour_emoji_fallback(dc) => Some(f),
                 // The run's unified East Asian face, when one face covers the whole run.
                 _ if !complex && ea_face.is_some() && crate::kinsoku::is_east_asian(c) => ea_face,
                 _ => {

@@ -229,6 +229,13 @@ impl FontFace {
         }
         self.skrifa().is_some_and(|f| f.charmap().map(c).is_some())
     }
+    /// Whether reusing this fallback face would bypass the colour-family preference for `c`.
+    /// The explicitly requested face keeps priority; this only guides a fallback carried over
+    /// from an earlier character. A regular cached lookup can still return monochrome when no
+    /// preferred colour family is available.
+    pub fn needs_colour_emoji_fallback(&self, c: char) -> bool {
+        emoji_by_default(c) && !colour_emoji(self)
+    }
     /// Does the face carry OpenType glyph substitution (GSUB)? Complex scripts (Myanmar, Khmer,
     /// Indic…) need it to reorder and stack; fonts with only Apple's AAT tables draw them unshaped.
     pub fn has_layout_tables(&self) -> bool {
@@ -1866,6 +1873,44 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn a_monochrome_fallback_does_not_keep_an_emoji_by_default() {
+        let db = FontDb::with_font_dirs(Vec::new());
+        db.set_system_fallback(false);
+        let face = db.face(FALLBACK_FAMILY, "Regular");
+        assert!(face.covers('☕'), "the already chosen text fallback can map the emoji");
+        assert!(face.needs_colour_emoji_fallback('☕'), "coverage alone must not keep a text fallback for emoji");
+        for c in ['A', '©', '☺', '✓', '●', 'ก', '中', '\u{0301}', '\u{FE0E}', '\u{FE0F}', '\u{200D}'] {
+            assert!(!face.needs_colour_emoji_fallback(c), "text/script/mark {c:?} keeps the previous fallback policy");
+        }
+    }
+
+    #[test]
+    fn a_preferred_colour_family_can_keep_the_following_emoji() {
+        // Only the selection policy is under test: renamed bundled bytes avoid system fonts,
+        // while the explicit installed-font renderer diagnostic separately proves real colour.
+        for family in ["Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "segoe ui emoji"] {
+            let face = make_face(FontBytes::Static(BUNDLED[0]), 0, family.into(), "Regular".into(), family.into(), Vec::new()).unwrap();
+            assert!(face.covers('☕'));
+            assert!(!face.needs_colour_emoji_fallback('☕'), "{family}");
+        }
+    }
+
+    #[test]
+    fn emoji_reselection_without_a_colour_font_keeps_a_covering_text_face() {
+        let db = FontDb::with_font_dirs(Vec::new());
+        db.set_system_fallback(false);
+        let text = db.face(FALLBACK_FAMILY, "Regular");
+        // Keep this local database independent of optional embedded Craft emoji fonts.
+        db.faces.write().unwrap().retain(|f| f.id() == text.id());
+        let first = db.fallback_for('☕', u32::MAX).expect("the bundled text fallback covers coffee");
+        assert!(first.needs_colour_emoji_fallback('☕'));
+        let after = db.fallback_styled('☕', u32::MAX, false, false).expect("colour preference cannot discard monochrome coverage");
+        assert_eq!(after.id(), first.id());
+        assert!(after.covers('☕'));
+        assert_eq!(db.fallback_for('☕', u32::MAX).unwrap().id(), after.id(), "the covering answer remains cached");
+    }
 
     #[test]
     fn emoji_by_default_follows_unicode_emoji_presentation() {

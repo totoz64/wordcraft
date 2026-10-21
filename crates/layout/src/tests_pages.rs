@@ -483,6 +483,8 @@ fn widow_control_moves_a_three_line_paragraph_whole() {
         for (fill, shift) in (30usize..60).flat_map(|f| (0..15).step_by(2).map(move |s| (f, s))) {
             let filler = "Filler line.\n".repeat(fill);
             let mut d = Document::from_text(&format!("{filler}{}\nAfter.", "word ".repeat(words)));
+            // The 45/55-word line counts are calibrated to the bundled face.
+            d.styles.default_chr.font = Some("Source Sans 3".into());
             d.format_paragraphs(&Pos::body(0, 0), &Pos::body(0, 0), &|p| p.space_before = Some(shift as f32)).unwrap();
             let l = lay(&d);
             let pieces: Vec<(usize, usize)> = l
@@ -491,6 +493,14 @@ fn widow_control_moves_a_three_line_paragraph_whole() {
                 .filter_map(|p| {
                     p.items.iter().find_map(|it| match it {
                         Placed::Lines { story: StoryRef::Body, path, para, l0, l1, .. } if *path == Path::top(fill) => {
+                            if fill == 30 && shift == 0 {
+                                eprintln!(
+                                    "widow_control_moves_a_three_line_paragraph_whole: words={words} want={want} fonts={:?} piece={} total={}",
+                                    para.styles.iter().map(|s| (&s.rc.font, &s.face.family, s.size)).collect::<Vec<_>>(),
+                                    l1 - l0,
+                                    para.lines.len()
+                                );
+                            }
                             Some((l1 - l0, para.lines.len()))
                         }
                         _ => None,
