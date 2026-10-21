@@ -16,6 +16,7 @@ on:
       - 'crates/engine/tests/french_local_language_boundaries.rs'
       - 'crates/engine/tests/french_explicit_autonym_context.rs'
       - 'crates/engine/tests/french_nominal_review.rs'
+      - 'crates/engine/tests/french_nominal_negative_review.rs'
       - 'docs/french-proofing.md'
       - 'docs/spelling-dictionaries.md'
       - '.github/workflows/french-proofing.yml'
@@ -35,6 +36,7 @@ on:
       - 'crates/engine/tests/french_local_language_boundaries.rs'
       - 'crates/engine/tests/french_explicit_autonym_context.rs'
       - 'crates/engine/tests/french_nominal_review.rs'
+      - 'crates/engine/tests/french_nominal_negative_review.rs'
       - 'docs/french-proofing.md'
       - 'docs/spelling-dictionaries.md'
       - '.github/workflows/french-proofing.yml'
@@ -245,6 +247,11 @@ jobs:
           WORDCRAFT_DICTIONARIES: ${{ runner.temp }}/wordcraft-french-dictionary
         run: cargo test --locked -p wordcraft-proof --test french_nominal_real -- --ignored
 
+      - name: Required real French negative nominal subject gate
+        env:
+          WORDCRAFT_DICTIONARIES: ${{ runner.temp }}/wordcraft-french-dictionary
+        run: cargo test --locked -p wordcraft-proof --test french_nominal_negative_real -- --ignored
+
       - name: Mixed French grammar review context
         run: cargo test --locked -p wordcraft-engine --test fr_mixed_context
 
@@ -256,3 +263,6 @@ jobs:
 
       - name: Nominal French agreement Review, languages and undo
         run: cargo test --locked -p wordcraft-engine --test french_nominal_review
+
+      - name: Negative nominal French subject Review, languages and undo
+        run: cargo test --locked -p wordcraft-engine --test french_nominal_negative_review

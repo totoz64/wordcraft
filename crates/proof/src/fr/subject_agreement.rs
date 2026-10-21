@@ -267,7 +267,7 @@ fn nominal_context(text: &str, ws: &[(usize, usize)], candidate: &Candidate<'_>,
     false
 }
 
-fn known_elision(form: &str) -> Option<bool> {
+pub(super) fn known_elision(form: &str) -> Option<bool> {
     let elides = grammar::takes_elision(form);
     // The existing phonetic table deliberately does not classify an unknown h word.
     if form.starts_with('h') && !elides { None } else { Some(elides) }

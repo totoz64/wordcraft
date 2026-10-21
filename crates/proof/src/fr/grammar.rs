@@ -474,6 +474,19 @@ pub(crate) fn is_personal_subject_issue(issue: &Issue) -> bool {
     matches!(issue.message.as_str(), super::subject_agreement::MESSAGE | super::subject_agreement::AUXILIARY_MESSAGE)
 }
 
+/// Accepted subject corrections take precedence over spelling/elision only inside
+/// their replacement. Nominal subjects already validate their full deciding context;
+/// keep this separate from the personal-subject context reconstruction below.
+pub(crate) fn has_subject_replacement_priority(text: &str, issue: &Issue) -> bool {
+    is_personal_subject_issue(issue)
+        || (issue.message == super::nominal_subjects::MESSAGE
+            && text.get(issue.start..issue.end).is_some_and(|source| {
+                source.starts_with("n’")
+                    || source.starts_with("n'")
+                    || source.strip_prefix("ne").and_then(|tail| tail.chars().next()).is_some_and(|c| matches!(c, ' ' | '\u{a0}' | '\u{202f}'))
+            }))
+}
+
 /// These initial-subject rules depend on words outside their replacement range.
 pub(crate) fn requires_syntactic_context(issue: &Issue) -> bool {
     is_personal_subject_issue(issue)
@@ -550,6 +563,9 @@ fn check_in_impl(
     // never license a French correction, even when the replaced word is French.
     for (issue, context) in super::nominal_agreement::check(text, &ws).into_iter().chain(super::nominal_subjects::check(text, &ws)) {
         if context_is_french(&context) {
+            if !preserve_conflicting_elisions && has_subject_replacement_priority(text, &issue) {
+                v.retain(|old| !(old.message.starts_with("Élision") && old.start < issue.end && issue.start < old.end));
+            }
             v.push(issue);
         }
     }

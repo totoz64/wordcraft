@@ -1,6 +1,7 @@
 //! Bounded agreement with a determiner-led common-noun subject.
 //! This recognises sentence starts and one optional agreeing adjective, not clauses,
 //! coordination, inversion, proper names, relative subjects or intervening clitics.
+//! One immediate explicit ne/n’ + finite verb + negative marker is also recognised.
 use std::ops::Range;
 
 use super::{
@@ -107,7 +108,58 @@ fn homograph_context_end(text: &str, ws: &[(usize, usize)], verb_index: usize) -
     (tail.trim().is_empty() || tail.trim_start().starts_with(['.', '!', '?'])).then_some(end)
 }
 
-fn subject_verb(text: &str, ws: &[(usize, usize)], start: usize, lexicon: &Lexicon, target: Person) -> Option<usize> {
+struct Predicate<'a> {
+    index: usize,
+    start: usize,
+    end: usize,
+    form: &'a str,
+    negative_marker: Option<usize>,
+}
+
+fn negative_marker(form: &str) -> bool {
+    matches!(form, "pas" | "plus" | "jamais" | "guère" | "point")
+}
+
+/// A single explicit negative construction is a bounded bridge, never arbitrary
+/// skipped words. Elision and the following marker are part of the deciding range.
+fn predicate<'a>(text: &'a str, ws: &[(usize, usize)], index: usize, lexicon: &Lexicon) -> Option<Predicate<'a>> {
+    let &(start, end) = ws.get(index)?;
+    let token = word(text, ws, index)?;
+    let (index, end, form, negative) = if token == "ne" {
+        let next = index.checked_add(1)?;
+        if !adjacent(text, ws, index, next) {
+            return None;
+        }
+        let &(_, end) = ws.get(next)?;
+        (next, end, lower_word(text, ws, next)?, true)
+    } else if let Some(form) = token.strip_prefix("n’").or_else(|| token.strip_prefix("n'")) {
+        if form.is_empty() || !form.chars().all(char::is_lowercase) {
+            return None;
+        }
+        (index, end, form, true)
+    } else {
+        (index, end, lower_word(text, ws, index)?, false)
+    };
+    if !finite(lexicon, form) {
+        return None;
+    }
+    let negative_marker = if negative {
+        let marker = index.checked_add(1)?;
+        if !adjacent(text, ws, index, marker) || !negative_marker(lower_word(text, ws, marker)?) {
+            return None;
+        }
+        let after = marker.checked_add(1)?;
+        if adjacent(text, ws, marker, after) && lower_word(text, ws, after).is_some_and(negative_marker) {
+            return None;
+        }
+        Some(marker)
+    } else {
+        None
+    };
+    Some(Predicate { index, start, end, form, negative_marker })
+}
+
+fn subject_verb<'a>(text: &'a str, ws: &[(usize, usize)], start: usize, lexicon: &Lexicon, target: Person) -> Option<Predicate<'a>> {
     let first = start.checked_add(1)?;
     let second = start.checked_add(2)?;
     let third = start.checked_add(3)?;
@@ -118,21 +170,20 @@ fn subject_verb(text: &str, ws: &[(usize, usize)], start: usize, lexicon: &Lexic
     if matches!(a, "mot" | "mots" | "verbe" | "verbes" | "forme" | "formes" | "exemple" | "exemples" | "infinitif" | "infinitifs") {
         return None;
     }
-    let b = lower_word(text, ws, second)?;
+    let b = word(text, ws, second)?;
     if !adjacent(text, ws, first, second) {
         return None;
     }
     // Prefer a complete longer nominal group, even when its verb is already
     // correct: "Les jeunes gardes surveillent" must not become "gardent".
-    if let Some(c) = lower_word(text, ws, third)
-        && adjacent(text, ws, second, third)
-        && finite(lexicon, c)
+    if adjacent(text, ws, second, third)
         && ((lexicon.unique_noun_number(a) == Some(target) && lexicon.adjective_matches_number(b, target))
             || (lexicon.adjective_matches_number(a, target) && lexicon.unique_noun_number(b) == Some(target)))
+        && let Some(predicate) = predicate(text, ws, third, lexicon)
     {
-        return Some(third);
+        return Some(predicate);
     }
-    (lexicon.unique_noun_number(a) == Some(target) && finite(lexicon, b)).then_some(second)
+    if lexicon.unique_noun_number(a) == Some(target) { predicate(text, ws, second, lexicon) } else { None }
 }
 
 pub(super) fn check_with(text: &str, ws: &[(usize, usize)], lexicon: &Lexicon) -> Vec<(Issue, Range<usize>)> {
@@ -144,12 +195,10 @@ pub(super) fn check_with(text: &str, ws: &[(usize, usize)], lexicon: &Lexicon) -
         let Some(target) = determiner(det) else {
             continue;
         };
-        let Some(verb_index) = subject_verb(text, ws, start, lexicon, target) else {
+        let Some(predicate) = subject_verb(text, ws, start, lexicon, target) else {
             continue;
         };
-        let Some(form) = lower_word(text, ws, verb_index) else {
-            continue;
-        };
+        let form = predicate.form;
         // A matching nominal/adjectival reading licenses a label or apposition:
         // “Les enfants guides.” is not necessarily a clause with a wrong verb.
         if NOMINAL_EPITHETS.contains(&form) || lexicon.has_unknown_nominal_reading(form) {
@@ -161,18 +210,36 @@ pub(super) fn check_with(text: &str, ws: &[(usize, usize)], lexicon: &Lexicon) -
         let Some(forms) = lexicon.agreement_forms(form, target) else {
             continue;
         };
-        let (Some(&(subject_start, _)), Some(&(verb_start, verb_end))) = (ws.get(start), ws.get(verb_index)) else {
+        let forms = if predicate.negative_marker.is_some() {
+            let Some(rendered) = forms
+                .into_iter()
+                .map(|form| {
+                    super::subject_agreement::known_elision(&form).map(|elides| if elides { format!("n’{form}") } else { format!("ne {form}") })
+                })
+                .collect::<Option<Vec<_>>>()
+            else {
+                continue;
+            };
+            rendered
+        } else {
+            forms
+        };
+        let Some(&(subject_start, _)) = ws.get(start) else {
             continue;
         };
+        let deciding_index = predicate.negative_marker.unwrap_or(predicate.index);
         let context_end = if lexicon.has_nonverbal_reading(form) {
-            let Some(end) = homograph_context_end(text, ws, verb_index) else {
+            let Some(end) = homograph_context_end(text, ws, deciding_index) else {
                 continue;
             };
             end
         } else {
-            verb_end
+            let Some(&(_, end)) = ws.get(deciding_index) else {
+                continue;
+            };
+            end
         };
-        issues.push((grammar::issue(verb_start, verb_end, MESSAGE.into(), forms), subject_start..context_end));
+        issues.push((grammar::issue(predicate.start, predicate.end, MESSAGE.into(), forms), subject_start..context_end));
     }
     issues
 }
@@ -192,6 +259,11 @@ mod tests {
     fn fixture() -> Lexicon {
         let rows = [
             ("enfant", "enfant", "nom epi sg"),
+            ("petit", "petit", "adj mas sg"),
+            ("est", "être", "v0 ipre 3sg"),
+            ("sont", "être", "v0 ipre 3pl"),
+            ("harcèle", "harceler", "v1 ipre 3sg"),
+            ("harcèlent", "harceler", "v1 ipre 3pl"),
             ("enfants", "enfant", "nom epi pl"),
             ("maison", "maison", "nom fem sg"),
             ("maisons", "maison", "nom fem pl"),
@@ -312,7 +384,6 @@ mod tests {
             "Les enfants qui joue arrivent.",
             "Les enfants de la maison joue.",
             "Les enfants, joue.",
-            "Les enfants ne joue pas.",
             "Les enfants et la maison tombe.",
             "M. Les enfants joue.",
             "Etc. Les enfants joue.",
@@ -333,5 +404,89 @@ mod tests {
         let issues = found("Les jeunes gardes surveille.", &lexicon);
         assert_eq!(issues.len(), 1);
         assert_eq!(issues[0].0.suggestions, ["surveillent"]);
+    }
+
+    #[test]
+    fn nominal_subject_negation_preserves_elision_marker_and_recorded_tense() {
+        let lexicon = fixture();
+        for (text, wrong, right) in [
+            ("Les enfants ne joue pas.", "ne joue", "ne jouent"),
+            ("Les enfants ne joue plus.", "ne joue", "ne jouent"),
+            ("Les enfants ne joue jamais.", "ne joue", "ne jouent"),
+            ("Les enfants ne joue guère.", "ne joue", "ne jouent"),
+            ("Les enfants ne joue point.", "ne joue", "ne jouent"),
+            ("Les enfants ne joue pas dehors.", "ne joue", "ne jouent"),
+            ("Les enfants ne jouait pas.", "ne jouait", "ne jouaient"),
+            ("Le enfant ne jouaient pas.", "ne jouaient", "ne jouait"),
+            ("Les petits enfants ne joue pas.", "ne joue", "ne jouent"),
+            ("Les maisons rouges ne tombe pas.", "ne tombe", "ne tombent"),
+            ("Les enfants n’est pas.", "n’est", "ne sont"),
+            ("Les enfants n'est pas.", "n'est", "ne sont"),
+            ("Le petit enfant ne sont pas.", "ne sont", "n’est"),
+            ("Les enfants n’a pas.", "n’a", "n’ont"),
+            ("Le petit enfant n'ont pas.", "n'ont", "n’a"),
+            ("Bonjour. Les enfants ne joue pas.", "ne joue", "ne jouent"),
+            ("Les\u{a0}enfants\u{202f}ne\u{a0}joue\u{202f}pas.", "ne\u{a0}joue", "ne jouent"),
+        ] {
+            let issues = found(text, &lexicon);
+            assert_eq!(issues.len(), 1, "{text}: {issues:?}");
+            let (issue, context) = &issues[0];
+            assert_eq!(&text[issue.start..issue.end], wrong, "{text}");
+            assert_eq!(issue.suggestions, [right], "{text}");
+            let marker = ["pas", "plus", "jamais", "guère", "point"].into_iter().find(|marker| text.contains(marker)).unwrap();
+            let marker_end = text.find(marker).unwrap() + marker.len();
+            assert!(context.end >= marker_end && context.start < issue.start, "{text}: {context:?}");
+            let fixed = format!("{}{right}{}", &text[..issue.start], &text[issue.end..]);
+            assert!(found(&fixed, &lexicon).is_empty(), "unstable correction: {fixed}");
+        }
+        let text = "Les enfants ne joue pas souvent dehors.";
+        assert_eq!(found(text, &lexicon)[0].1, 0..text.len() - 1, "the homograph's complete bounded tail is deciding context");
+        let issues = found("Les enfants ne joue pas. Les maisons ne tombe pas.", &lexicon);
+        assert_eq!(issues.len(), 2);
+    }
+
+    #[test]
+    fn nominal_subject_negation_does_not_skip_unsupported_or_ambiguous_material() {
+        let lexicon = fixture();
+        for text in [
+            "Les enfants ne jouent pas.",
+            "Le petit enfant n’est pas.",
+            "Les enfants ne sont pas.",
+            "Les enfants ne joue.",
+            "Les enfants ne joue que dehors.",
+            "Les enfants ne joue vraiment pas.",
+            "Les enfants joue pas.",
+            "Les enfants n’ joue pas.",
+            "Les enfants ne ne joue pas.",
+            "Les enfants ne le joue pas.",
+            "Les enfants ne lui joue pas.",
+            "Les enfants ne s’est pas.",
+            "Les enfants ne joue pas plus.",
+            "Les enfants ne joue plus jamais.",
+            "Les enfants ne joue pas un air.",
+            "Les enfants ne guide pas.",
+            "Les enfants ne guides pas.",
+            "Les enfants ne garde pas.",
+            "Les enfants ne pilote pas.",
+            "Les enfants ne harcèle pas.",
+            "Les enfants ne jouer pas.",
+            "Les enfants ne joué pas.",
+            "Les enfants ne xyzxyz pas.",
+            "Les enfant ne joue pas.",
+            "Les enfants ne\njoue pas.",
+            "Les enfants ne joue\npas.",
+            "Les enfants ne, joue pas.",
+            "Les enfants ne joue, pas.",
+            "Les enfants ne Joue pas.",
+            "Les enfants NE joue pas.",
+            "Les enfants de la maison ne joue pas.",
+            "Les enfants et la maison ne joue pas.",
+            "Les enfants qui ne joue pas arrivent.",
+            "« Les enfants ne joue pas. »",
+            "— Les enfants ne joue pas.",
+        ] {
+            assert!(found(text, &lexicon).is_empty(), "{text}: {:?}", found(text, &lexicon));
+        }
+        assert!(found("Les enfants ne joue pas.", &Lexicon::builtins()).is_empty());
     }
 }
