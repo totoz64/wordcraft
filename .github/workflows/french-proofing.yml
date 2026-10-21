@@ -14,6 +14,7 @@ on:
       - 'crates/engine/tests/french_reflexive_auxiliary.rs'
       - 'crates/engine/tests/fr_mixed_context.rs'
       - 'crates/engine/tests/french_local_language_boundaries.rs'
+      - 'crates/engine/tests/french_explicit_autonym_context.rs'
       - 'docs/french-proofing.md'
       - 'docs/spelling-dictionaries.md'
       - '.github/workflows/french-proofing.yml'
@@ -31,6 +32,7 @@ on:
       - 'crates/engine/tests/french_reflexive_auxiliary.rs'
       - 'crates/engine/tests/fr_mixed_context.rs'
       - 'crates/engine/tests/french_local_language_boundaries.rs'
+      - 'crates/engine/tests/french_explicit_autonym_context.rs'
       - 'docs/french-proofing.md'
       - 'docs/spelling-dictionaries.md'
       - '.github/workflows/french-proofing.yml'
@@ -241,3 +243,6 @@ jobs:
 
       - name: Local French grammar language boundaries and undo
         run: cargo test --locked -p wordcraft-engine --test french_local_language_boundaries
+
+      - name: Explicit French word mentions and local review
+        run: cargo test --locked -p wordcraft-engine --test french_explicit_autonym_context

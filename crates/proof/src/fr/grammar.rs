@@ -505,25 +505,39 @@ pub(crate) fn required_context_range(text: &str, issue: &Issue) -> Option<std::o
 /// Grammar issues in a paragraph of `lang` text ([`ProofLang::Fr`], or [`ProofLang::FrCa`] for
 /// Quebec typography), in order.
 pub fn check_in(text: &str, lang: ProofLang) -> Vec<Issue> {
-    check_in_impl(text, lang, false)
+    check_in_impl(text, lang, false, |_| true)
 }
 
 /// The mixed-language dispatcher must validate deciding contexts before suppressing
 /// conflicting elisions. The public single-language entry point keeps its precedence.
-pub(crate) fn check_in_preserving_conflicts(text: &str, lang: ProofLang) -> Vec<Issue> {
-    check_in_impl(text, lang, true)
+pub(crate) fn check_in_preserving_conflicts(
+    text: &str,
+    lang: ProofLang,
+    context_is_french: impl FnOnce(&std::ops::Range<usize>) -> bool,
+) -> Vec<Issue> {
+    check_in_impl(text, lang, true, context_is_french)
 }
 
-fn check_in_impl(text: &str, lang: ProofLang, preserve_conflicting_elisions: bool) -> Vec<Issue> {
+fn check_in_impl(
+    text: &str,
+    lang: ProofLang,
+    preserve_conflicting_elisions: bool,
+    context_is_french: impl FnOnce(&std::ops::Range<usize>) -> bool,
+) -> Vec<Issue> {
     let ws: Vec<(usize, usize)> = words(text);
+    let mention = written_pronoun_context(text, &ws).filter(|mention| context_is_french(&mention.required));
     let mut v = Vec::new();
     high_punctuation(text, lang == ProofLang::FrCa, &mut v);
     guillemets(text, &mut v);
     straight_quotes(text, &mut v);
     repeated_words(text, &ws, &mut v);
     sentence_capitals(text, &ws, &mut v);
-    if !written_pronoun_context(text, &ws) {
-        elisions(text, &ws, &mut v);
+    elisions(text, &ws, &mut v);
+    if let Some(mention) = &mention {
+        // Mentioning `Je` can license `Je est`, but does not license a later
+        // `de avoir` or `le ami` elsewhere in the same paragraph.
+        v.retain(|issue| !(issue.message.starts_with("Élision") && issue.start < mention.protected.end && mention.protected.start < issue.end));
+    } else {
         super::conjugation::check(text, &ws, &mut v);
         super::agreement::check(text, &ws, &mut v);
         if let Some(subject) = super::subject_agreement::check(text, &ws) {
@@ -543,52 +557,61 @@ fn check_in_impl(text: &str, lang: ProofLang, preserve_conflicting_elisions: boo
 }
 
 /// A narrow explicit mention: initial personal-pronoun word + third-singular
-/// copula, then a pronoun-class name or a written-style marker within eight words.
+/// copula, then a pronoun-class name, an explicit singular word predicate, or a
+/// written-style marker within eight words. The deciding context and the smaller
+/// prefix protected from elision have different ranges.
 /// This does not infer unmarked autonyms. Primary descriptions:
 /// https://vitrinelinguistique.oqlf.gouv.qc.ca/24686/la-grammaire/les-determinants/determinants-definis/determinant-defini-devant-un-autonyme
 /// https://vitrinelinguistique.oqlf.gouv.qc.ca/24379/la-typographie/mise-en-relief/italique/emploi-de-litalique-pour-les-autonymes-et-les-mots-de-registres-differents
-fn written_pronoun_context(text: &str, ws: &[(usize, usize)]) -> bool {
+struct WrittenPronounContext {
+    required: std::ops::Range<usize>,
+    protected: std::ops::Range<usize>,
+}
+
+fn written_pronoun_context(text: &str, ws: &[(usize, usize)]) -> Option<WrittenPronounContext> {
     if !super::conjugation::is_prose(text) {
-        return false;
+        return None;
     }
-    let (Some(&(a, b)), Some(&(c, d))) = (ws.first(), ws.get(1)) else { return false };
+    let (&(a, b), &(c, d)) = (ws.first()?, ws.get(1)?);
     let horizontal = |gap: &str| !gap.is_empty() && gap.chars().all(|c| matches!(c, ' ' | '\u{a0}' | '\u{202f}'));
-    let Some(subject) = text.get(a..b).filter(|word| word.len() <= 16 && !word.chars().skip(1).any(char::is_uppercase)) else { return false };
+    let subject = text.get(a..b).filter(|word| word.len() <= 16 && !word.chars().skip(1).any(char::is_uppercase))?;
     if !text.get(..a).is_some_and(|prefix| prefix.trim().is_empty())
         || !text.get(b..c).is_some_and(horizontal)
         || !matches!(subject.to_lowercase().as_str(), "je" | "tu" | "il" | "elle" | "on" | "nous" | "vous" | "ils" | "elles")
     {
-        return false;
+        return None;
     }
-    let Some(copula) = text.get(c..d) else { return false };
+    let copula = text.get(c..d)?;
     let (next, mut previous_end) = if matches!(copula, "est" | "était" | "fut" | "sera" | "serait" | "soit" | "fût") {
         (2usize, d)
     } else if matches!(copula, "a" | "avait" | "eut" | "aura" | "aurait" | "ait" | "eût") {
-        let Some(&(e, f)) = ws.get(2) else { return false };
+        let &(e, f) = ws.get(2)?;
         if !text.get(d..e).is_some_and(horizontal) || text.get(e..f) != Some("été") {
-            return false;
+            return None;
         }
         (3usize, f)
     } else {
-        return false;
+        return None;
     };
     let mut previous_en = false;
     let first_predicate = ws.get(next).and_then(|&(start, end)| text.get(start..end));
     for (offset, &(start, end)) in ws.iter().skip(next).take(8).enumerate() {
-        let (Some(gap), Some(word)) = (text.get(previous_end..start), text.get(start..end).filter(|word| word.len() <= 32)) else { return false };
+        let gap = text.get(previous_end..start)?;
+        let word = text.get(start..end).filter(|word| word.len() <= 32)?;
         // Do not consume a marker from another sentence or clause.
         if gap.chars().any(|c| matches!(c, '.' | '!' | '?' | ';' | ':' | ',')) {
-            return false;
+            return None;
         }
         if (matches!(word, "pronom" | "pronoms") && (offset == 0 || (offset == 1 && matches!(first_predicate, Some("un" | "le" | "ce")))))
+            || (word == "mot" && offset == 1 && horizontal(gap) && matches!(first_predicate, Some("un" | "le" | "ce")))
             || (previous_en && horizontal(gap) && matches!(word, "gras" | "italique" | "italiques" | "majuscules" | "minuscules"))
         {
-            return true;
+            return Some(WrittenPronounContext { required: a..end, protected: a..d });
         }
         previous_en = word == "en";
         previous_end = end;
     }
-    false
+    None
 }
 
 #[cfg(test)]
