@@ -1535,14 +1535,25 @@ mod tests {
     #[test]
     fn legacy_font_effects_are_drawn() {
         use wordcraft_doc::CharProps;
-        // Dark and grey pixel counts, and the grey pixels' mean offset from the dark ones.
+        // Compare the visible copy against the same glyph without effects. Its centroid is
+        // not the translation: the foreground hides different parts of each font's copy.
         let shot = |c: CharProps| {
             let mut d = Document::from_text("x");
+            d.styles.default_chr.font = Some("Source Sans 3".into());
             let cp = CharProps { size: Some(40.0), bold: Some(true), ..c };
+            let flags = (cp.outline, cp.shadow, cp.emboss, cp.engrave);
             d.body = vec![wordcraft_doc::para_block(wordcraft_doc::Paragraph::with_text("HHHH", cp))];
             let l = layout(&d, &mut LayoutCache::new(), &LayoutOptions::default());
+            for item in &l.pages[0].items {
+                if let wordcraft_layout::Placed::Lines { para, .. } = item {
+                    eprintln!(
+                        "legacy_font_effects_are_drawn: flags={flags:?} fonts={:?}",
+                        para.styles.iter().map(|s| (&s.rc.font, &s.face.family, &s.face.style, s.size)).collect::<Vec<_>>()
+                    );
+                }
+            }
             let img = render_page(&d, &l.pages[0], 2.0, &RenderOptions::default());
-            let (mut dark, mut grey) = ((0.0, 0.0, 0.0f64), (0.0, 0.0, 0.0f64));
+            let (mut dark, mut grey) = (0.0, 0.0);
             for (x, y) in (100..800).flat_map(|x| (100..300).map(move |y| (x, y))) {
                 let v = img.pixel(x, y)[0];
                 // The copy is solid RGB 128; a wider range would count the glyph's own
@@ -1552,13 +1563,11 @@ mod tests {
                     120..=136 => &mut grey,
                     _ => continue,
                 };
-                *acc = (acc.0 + 1.0, acc.1 + f64::from(x), acc.2 + f64::from(y));
+                *acc += 1.0;
             }
-            let mean = |a: (f64, f64, f64)| (a.1 / a.0.max(1.0), a.2 / a.0.max(1.0));
-            let ((dx, dy), (gx, gy)) = (mean(dark), mean(grey));
-            (dark.0, grey.0, (gx - dx, gy - dy))
+            (dark, grey, img)
         };
-        let (plain_dark, plain_grey, _) = shot(CharProps::default());
+        let (plain_dark, plain_grey, plain) = shot(CharProps::default());
         assert!(plain_dark > 2000.0, "plain {plain_dark}");
         let (dark, _, _) = shot(CharProps { outline: Some(true), ..Default::default() });
         assert!(dark < plain_dark / 3.0, "outline is hollow: {dark} vs {plain_dark}");
@@ -1567,9 +1576,36 @@ mod tests {
             (CharProps { emboss: Some(true), ..Default::default() }, 1.0),
             (CharProps { engrave: Some(true), ..Default::default() }, -1.0),
         ] {
-            let (_, grey, (ox, oy)) = shot(c);
+            let (_, grey, img) = shot(c);
             assert!(grey > plain_grey * 2.0, "a grey copy: {grey} vs {plain_grey}");
-            assert!(ox * sign > 1.0 && oy * sign > 1.0, "grey copy offset {ox} {oy}");
+            // At 40pt and 2x the copy is about 3 pixels along each axis. Count its grey
+            // pixels on previously white paper, matching the plain dark-glyph mask in
+            // the expected direction and with each axis reversed independently.
+            let overlap = |dx: i32, dy: i32| {
+                (100..800)
+                    .flat_map(|x| (100..300).map(move |y| (x, y)))
+                    .filter(|&(x, y)| {
+                        let source_x = (x as i32 - dx) as u32;
+                        let source_y = (y as i32 - dy) as u32;
+                        (120..=136).contains(&img.pixel(x, y)[0])
+                            && plain.pixel(x, y)[0] > 240
+                            && source_x < plain.width
+                            && source_y < plain.height
+                            && plain.pixel(source_x, source_y)[0] < 60
+                    })
+                    .count()
+            };
+            let offset = if sign > 0.0 { 3 } else { -3 };
+            let expected = overlap(offset, offset);
+            let reversed_x = overlap(-offset, offset);
+            let reversed_y = overlap(offset, -offset);
+            eprintln!(
+                "legacy_font_effects_are_drawn: sign={sign} dark={plain_dark} grey={grey} plain_grey={plain_grey} expected={expected} reversed_x={reversed_x} reversed_y={reversed_y}"
+            );
+            assert!(
+                expected > 0 && expected > reversed_x && expected > reversed_y,
+                "grey copy direction: expected={expected} reversed_x={reversed_x} reversed_y={reversed_y}"
+            );
         }
     }
 

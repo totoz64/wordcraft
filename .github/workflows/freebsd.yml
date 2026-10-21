@@ -35,4 +35,5 @@ jobs:
         CARGO_PROFILE_DEV_DEBUG=0 cargo test --locked -p wordcraft-layout --lib tests::hidden_text_adds_no_line_break_opportunity_when_not_shown -- --exact --nocapture
         CARGO_PROFILE_DEV_DEBUG=0 cargo test --locked -p wordcraft-layout --lib tests::tight_wrap_follows_an_ellipse -- --exact --nocapture
         CARGO_PROFILE_DEV_DEBUG=0 cargo test --locked -p wordcraft-layout --lib tests_pages::widow_control_moves_a_three_line_paragraph_whole -- --exact --nocapture
+        CARGO_PROFILE_DEV_DEBUG=0 cargo test --locked -p wordcraft-render --lib tests::legacy_font_effects_are_drawn -- --exact --nocapture
         CARGO_PROFILE_DEV_DEBUG=0 cargo test --workspace --locked
