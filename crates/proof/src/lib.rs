@@ -800,8 +800,12 @@ pub fn check_text_with(text: &str, spans: &[(Range<usize>, ProofLang)], opts: &O
     langs.dedup();
     let mut accepted_french_subject_ranges = Vec::new();
     for lang in langs {
+        let french_context = |context: &Range<usize>| {
+            let index = merged.partition_point(|(range, _)| range.end <= context.start);
+            merged.get(index).is_some_and(|(range, language)| *language == lang && range.start <= context.start && context.end <= range.end)
+        };
         let found = if matches!(lang, ProofLang::Fr | ProofLang::FrCa) {
-            fr::grammar::check_in_preserving_conflicts(text, lang)
+            fr::grammar::check_in_preserving_conflicts(text, lang, french_context)
         } else {
             grammar_in(text, lang, !list_item)
         };
@@ -810,8 +814,7 @@ pub fn check_text_with(text: &str, spans: &[(Range<usize>, ProofLang)], opts: &O
                 // Every replaced byte must belong to one French region. Initial
                 // syntax additionally needs its deciding subject, auxiliary and bridge.
                 let Some(context) = fr::grammar::required_context_range(text, &issue) else { continue };
-                let index = merged.partition_point(|(range, _)| range.end <= context.start);
-                if !merged.get(index).is_some_and(|(range, language)| *language == lang && range.start <= context.start && context.end <= range.end) {
+                if !french_context(&context) {
                     continue;
                 }
             }

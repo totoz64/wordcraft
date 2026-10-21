@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-20 · **Change:** minor (French local grammar respects language boundaries); previously minor (bounded French grammar deciding-language context); previously minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660); previously minor (French personal-subject agreement; baseline #1660); previously trivial (preserve explicit written-pronoun examples); previously trivial (French suggestion priority after language filtering); previously minor (French reflexive auxiliary correction); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-21 · **Change:** minor (explicit French word mentions and local protection); previously minor (French local grammar respects language boundaries); previously minor (bounded French grammar deciding-language context); previously minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660); previously minor (French personal-subject agreement; baseline #1660); previously trivial (preserve explicit written-pronoun examples); previously trivial (French suggestion priority after language filtering); previously minor (French reflexive auxiliary correction); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
 
 ## Shared-engine compatibility and reproducible CI
 
@@ -334,6 +334,7 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-21 | minor | Explicit French un/le/ce mot mentions retain their written pronoun; the validated same-region marker protects only the initial copula, leaving unrelated local elisions available; existing broad candidate guards and general-grammar limits remain unchanged |
 | 2026-10-20 | minor | French elision, repeated-word and quoted-text replacements require their own complete language context; local French checks after a foreign prefix remain available; original UTF-8 text and broader grammar limits retained |
 | 2026-10-20 | minor | Require one French-region deciding context for existing personal-subject, personal-cleft and avoir suggestions; retain unrelated foreign tails, original UTF-8 ranges and independent spelling/elision precedence; no general-grammar claim |
 | 2026-10-20 | minor | Attached Unicode marks keep their original spelling ranges; French compound fallback rejects empty internal components while preserving explicit dictionary entries |
@@ -436,9 +437,13 @@ allows typographic emphasis instead of quotation marks; its
 also describes direct autonymous use.
 
 A bounded guard recognizes an initial written personal pronoun, a third-person
-singular copula (including avoir + été), and an immediate predicative pronoun label or nearby
-`en gras`, `en italique(s)`, `en majuscules` or `en minuscules` cue. In that
-clause without intervening comma or sentence punctuation, initial conjugation/agreement and elision suggestions are withheld.
+singular copula (including avoir + été), and an immediate predicative pronoun label,
+an explicit `un mot`, `le mot` or `ce mot` label, or a nearby
+`en gras`, `en italique(s)`, `en majuscules` or `en minuscules` cue. The deciding
+subject-to-marker range must belong to one French region. Initial conjugation/agreement
+suggestions are withheld there; only elisions overlapping the initial subject/copula
+are withheld, so an unrelated later elision remains available. An intervening comma
+or sentence punctuation still ends the marker search.
 Spelling and punctuation checks remain available. Ordinary `Je est responsable`
 still proposes `Je suis responsable`, and a formatting cue alone cannot disable
 an ordinary non-copular personal agreement correction.
@@ -487,3 +492,22 @@ guards, spelling precedence, grammar-mark option and explicit Review/F7 behavior
 are retained. Original UTF-8 text and positions are not normalized or rewritten.
 These remain bounded checks. General French grammar and multilingual parsing
 remain outside this change’s scope.
+
+## Explicit word mentions and local protection
+
+`Je est un mot`, `Je était le mot retenu` and `Nous a été ce mot` explicitly
+refer to a written personal-pronoun form. The additional label is the singular
+word `mot` immediately after `un`, `le` or `ce`; it does not recognize `mots`,
+`motard`, an intervening modifier or an arbitrary later occurrence of `mot`.
+
+The guard separates the words needed to establish the mention from the smaller
+initial subject/copula it protects. Its marker cannot be supplied by an English,
+unsupported-language or other-French-region run. In `Je est un pronom. Il refuse
+de avoir peur.`, the mention stays intact while `de avoir` can still offer `d’avoir`.
+
+The older personal-subject candidate exclusions for nearby `mot`/`mots` and
+other metalinguistic words remain unchanged. Rejecting the new guard is not a
+promise that those existing exclusions will allow a personal-agreement suggestion.
+Spelling, punctuation, original UTF-8 positions and independent Review behavior
+are retained. This does not add a general autonym parser, grammar coverage or
+native/remote/release validation claim.
