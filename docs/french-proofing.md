@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-22 · **Change:** minor (French nominal subjects with one non-reflexive clitic); previously minor (bounded French negative common-noun subjects); previously minor (bounded French nominal agreement and common-noun subjects); previously minor (explicit French word mentions and local protection); previously minor (French local grammar respects language boundaries); previously minor (bounded French grammar deciding-language context); previously minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660); previously minor (French personal-subject agreement; baseline #1660); previously trivial (preserve explicit written-pronoun examples); previously trivial (French suggestion priority after language filtering); previously minor (French reflexive auxiliary correction); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-22 · **Change:** minor (bounded expanded French subjects and recap coordination); previously minor (French nominal subjects with one non-reflexive clitic); previously minor (bounded French negative common-noun subjects); previously minor (bounded French nominal agreement and common-noun subjects); previously minor (explicit French word mentions and local protection); previously minor (French local grammar respects language boundaries); previously minor (bounded French grammar deciding-language context); previously minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (desktop dictionary installation and activation; baseline based on #1660); previously minor (first bounded conjugation checks and si elision; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (dictionary installation, personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (personal-cleft agreement and optional finite morphology; baseline based on #1660); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (explicit French verb-form data installation; baseline #1660); previously minor (French irregular participles and five avoir tenses; baseline #1660); previously minor (French negative/adverb participle contexts; baseline #1660); previously minor (French personal-subject agreement; baseline #1660); previously trivial (preserve explicit written-pronoun examples); previously trivial (French suggestion priority after language filtering); previously minor (French reflexive auxiliary correction); previously minor (reviewed French baseline: dictionary recovery, regional labels, historical compatibility, pinned CI and French pattern triggers); previously minor (French agreement through object clitics; baseline #1660)
 
 ## Shared-engine compatibility and reproducible CI
 
@@ -202,6 +202,39 @@ tense or analyse participle agreement. Self-contained proof/Review regressions a
 the separate pinned `french_nominal_negative_real` gate describe these boundaries;
 their existence does not establish native, hosted or release validation.
 
+### Three bounded subject extensions
+
+The contribution stack prepares three additional constructions, using the existing
+optional MPL morphology. This describes code scope; it does not establish hosted,
+native or official-release validation.
+
+- A plural nominal head can control a verb through one short determined complement:
+  `Les enfants de la voisine parlait` suggests `parlaient`. Only `du`, `des`, or `de`
+  with a supported determiner/`l’` and one number-compatible recorded noun are admitted.
+  Singular heads are declined because the lexicon does not classify collective or
+  quantity meanings. Bare `de` plus a noun, nested groups and complement modifiers
+  are outside this path. Existing word-mention guards protect the head; the new complement path also
+  declines explicit word/title labels such as `terme`, `nom` and `titre`, whose
+  following finite-looking word may be an unquoted mention. This bounded label
+  class does not classify arbitrary meaning or recover absent style metadata. The source verb must have no nonverbal reading; a bounded
+  complete adverb-only tail is required and included in the deciding French context.
+- After a simple nominal subject, exactly `lui en` or `leur en` can bridge to the
+  finite form, also inside the existing explicit negative pattern. Reuse the typed
+  clitic order/person checks. Other pairs, direct-object/reflexive chains and
+  participle agreement are outside this increment.
+- Two personal subjects coordinated with `et` can precede a comma and an explicit
+  compatible recap pronoun: `Toi et moi, nous parlait` suggests `parlions`.
+  An unrecapped phrase remains undecided because it may be a title. The recap must
+  agree with the grammatical person of the coordinated subjects. This path admits
+  only an immediate pure finite form, with no clitics, negation or auxiliary analysis.
+  All coordinated words, the comma/gaps, recap and verb are deciding dependencies.
+
+These bounded constructions are separate families, not general French sentence
+analysis. The `french_structured_subjects_real` gate separates expected errors from
+correct/ambiguous/unsupported controls. `french_structured_subjects_review` checks
+actual Review, marks, Apply, Undo and language preservation. See the
+[family catalogue](french-grammar-families.md) for source references and future scope.
+
 ### One non-reflexive clitic after a simple nominal subject
 
 The same subject may precede exactly one `lui`, `leur`, `y` or `en`, then a recorded
@@ -223,9 +256,9 @@ are not a claim to recognise all colloquial omissions of `ne`.
 
 The isolated `french_nominal_clitic_review` integration test exercises actual Review,
 Apply, Undo, marks, options and language preservation. The pinned
-`french_nominal_clitic_real` gate includes 16 independently listed errors, 13 correct
-examples, 24 unsupported/ambiguous examples, 1,060 distinct generated erroneous
-constructions and 64 generated homograph declines, each in both French regions.
+`french_nominal_clitic_real` gate now includes the two admitted chains as well: 22 independently listed errors,
+16 correct examples, 30 unsupported/ambiguous examples, 1,484 distinct generated erroneous
+constructions and 96 generated homograph declines, each in both French regions.
 The construction sweep samples eight admissible third-person singular/plural pairs
 per recorded tense/mood class across seven classes; identical constructions are
 deduplicated. Its oracle is lexical self-consistency, not independently measured
@@ -433,6 +466,7 @@ cargo test --locked -p wordcraft-proof --test french_grammar
 cargo test --locked -p wordcraft-engine --lib french_proofing_through_the_review_commands
 cargo test --locked -p wordcraft-engine --test french_grammar
 cargo test --locked -p wordcraft-engine --test french_nominal_clitic_review
+cargo test --locked -p wordcraft-engine --test french_structured_subjects_review
 cargo test --locked -p wordcraft-ui-egui --lib a_french_interface_writes_new_documents_in_french
 cargo xtask ci
 ```
@@ -444,6 +478,7 @@ cargo test --locked -p wordcraft-proof --test french_dictionary -- --ignored
 cargo test --locked -p wordcraft-proof --test french_nominal_real -- --ignored
 cargo test --locked -p wordcraft-proof --test french_nominal_negative_real -- --ignored
 cargo test --locked -p wordcraft-proof --test french_nominal_clitic_real -- --ignored --nocapture
+cargo test --locked -p wordcraft-proof --test french_structured_subjects_real -- --ignored --nocapture
 cargo test --locked -p wordcraft french_dictionary -- --include-ignored
 cargo test --locked -p wordcraft-ui-egui --test french_dictionary_setup
 ```
@@ -484,6 +519,7 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-22 | minor | Bounded plural subjects with one determined complement, nominal lui en/leur en chains, and explicitly recapped personal coordination; retain lexical ambiguity, complete same-region dependencies and separate delivery states |
 | 2026-10-22 | minor | French simple nominal subjects through one non-reflexive lui/leur/y/en; recorded paradigms, conservative nonverbal guards, exact language context and Review/Undo regressions; family catalogue and bounded generated lexical checks |
 | 2026-10-21 | minor | Bounded French nominal subjects through explicit ne/n’/n' + finite verb + pas/plus/jamais/guère/point; recorded forms and minimal elision repair retain exact same-region dependencies; clitics, omitted ne and general negative-clause parsing remain unsupported |
 | 2026-10-21 | minor | Bounded French determiner/noun/adjective agreement and simple common-noun subjects at clear sentence starts; reuse optional licensed data, preserve ambiguous readings and exact language contexts; no general-grammar or readiness-estimate claim |

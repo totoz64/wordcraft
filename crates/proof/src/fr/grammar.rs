@@ -479,6 +479,7 @@ pub(crate) fn is_personal_subject_issue(issue: &Issue) -> bool {
 /// keep this separate from the personal-subject context reconstruction below.
 pub(crate) fn has_subject_replacement_priority(text: &str, issue: &Issue) -> bool {
     is_personal_subject_issue(issue)
+        || issue.message == super::coordinated_subjects::MESSAGE
         || (issue.message == super::nominal_subjects::MESSAGE
             && text.get(issue.start..issue.end).is_some_and(|source| {
                 source.starts_with("n’")
@@ -561,10 +562,14 @@ fn check_in_impl(
             v.push(subject);
         }
     }
-    // Nominal rules carry their complete deciding context once, rather than
+    // These rules carry their complete deciding context once, rather than
     // reparsing the paragraph for every emitted issue. A foreign anchor must
     // never license a French correction, even when the replaced word is French.
-    for (issue, context) in super::nominal_agreement::check(text, &ws).into_iter().chain(super::nominal_subjects::check(text, &ws)) {
+    for (issue, context) in super::nominal_agreement::check(text, &ws)
+        .into_iter()
+        .chain(super::nominal_subjects::check(text, &ws))
+        .chain(super::coordinated_subjects::check(text, &ws))
+    {
         if context_is_french(&context) {
             if !preserve_conflicting_elisions && has_subject_replacement_priority(text, &issue) {
                 v.retain(|old| !(old.message.starts_with("Élision") && old.start < issue.end && issue.start < old.end));

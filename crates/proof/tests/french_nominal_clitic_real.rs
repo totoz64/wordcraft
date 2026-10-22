@@ -18,7 +18,7 @@ use wordcraft_proof::{
 const SUBJECT: &str = "Accord du verbe avec le groupe nominal sujet";
 const TENSES: [&str; 7] = ["ipre", "iimp", "ipsi", "ifut", "spre", "simp", "cond"];
 const PAIRS_PER_TENSE: usize = 8;
-const CLITICS: [&str; 4] = ["lui", "leur", "y", "en"];
+const CLITICS: [&str; 6] = ["lui", "leur", "y", "en", "lui en", "leur en"];
 type RecordedGroups = BTreeMap<(String, String), (BTreeSet<String>, BTreeSet<String>)>;
 type Case = (String, String, String);
 
@@ -149,7 +149,8 @@ fn generated_cases(groups: &RecordedGroups, lexicon: &Lexicon) -> BTreeSet<Case>
         }
         eprintln!("{tense}: {} admissible recorded sg/pl pairs; {PAIRS_PER_TENSE} deterministically sampled", eligible.len());
     }
-    assert!(!cases.is_empty() && cases.len() <= TENSES.len() * PAIRS_PER_TENSE * 2 * 10);
+    let prefix_classes = CLITICS.into_iter().map(|clitic| prefixes(clitic).len()).sum::<usize>();
+    assert!(!cases.is_empty() && cases.len() <= TENSES.len() * PAIRS_PER_TENSE * 2 * prefix_classes);
     cases
 }
 
@@ -176,7 +177,7 @@ fn generated_homograph_declines(groups: &RecordedGroups, lexicon: &Lexicon) -> B
             cases.insert(format!("{subject} {negative} {source} pas."));
         }
     }
-    assert!(cases.len() <= 64);
+    assert!(cases.len() <= 8 * CLITICS.len() * 2);
     cases
 }
 
@@ -196,6 +197,12 @@ fn real_nominal_nonreflexive_clitics_cover_lexical_classes_and_context() {
     let generated = generated_cases(&groups, &lexicon);
     let generated_declines = generated_homograph_declines(&groups, &lexicon);
     let positives = [
+        ("Les enfants lui en parle.", "lui en parle", "lui en parlent"),
+        ("Le petit enfant leur en parlent.", "leur en parlent", "leur en parle"),
+        ("Les enfants lui en parlait.", "lui en parlait", "lui en parlaient"),
+        ("Les enfants ne lui en parlait pas.", "ne lui en parlait", "ne lui en parlaient"),
+        ("Le petit enfant ne leur en parlaient jamais.", "ne leur en parlaient", "ne leur en parlait"),
+        ("Les enfants n'lui en parlait plus.", "n'lui en parlait", "ne lui en parlaient"),
         ("Les enfants lui parlait.", "lui parlait", "lui parlaient"),
         ("Le petit enfant lui parlaient.", "lui parlaient", "lui parlait"),
         ("Les enfants leur répondait.", "leur répondait", "leur répondaient"),
@@ -214,6 +221,9 @@ fn real_nominal_nonreflexive_clitics_cover_lexical_classes_and_context() {
         ("Les\u{a0}enfants lui\u{202f}parlait.", "lui\u{202f}parlait", "lui parlaient"),
     ];
     let correct = [
+        "Les enfants lui en parlent.",
+        "Le petit enfant leur en parle.",
+        "Les enfants ne leur en parlaient pas.",
         "Les robes en voile.",
         "Les manteaux en laine.",
         "Les murs en pierre.",
@@ -229,13 +239,19 @@ fn real_nominal_nonreflexive_clitics_cover_lexical_classes_and_context() {
         "Le petit enfant n’en sort pas.",
     ];
     let unsupported = [
+        "Les enfants lui en garde.",
+        "Les enfants leur en a.",
+        "Les enfants lui y parle.",
+        "Les enfants leur y parle.",
+        "Les enfants y en voit.",
+        "Les enfants lui en y parle.",
         "Les enfants lui a.",
         "Les enfants en dispose.",
         "Les enfants leur garde.",
         "Les enfants lui voile.",
         "Les enfants le parlait.",
         "Les enfants se parlait.",
-        "Les enfants lui en parlait.",
+        "Les enfants en lui parlait.",
         "Les enfants y en parlait.",
         "Les enfants ne lui parlait.",
         "Les enfants ne lui parlait que dehors.",
@@ -249,7 +265,7 @@ fn real_nominal_nonreflexive_clitics_cover_lexical_classes_and_context() {
         "Les enfants n’y allait-pas.",
         "Les enfants qui lui parlait arrivent.",
         "Les enfants et leur mère lui parlait.",
-        "Les enfants de la maison lui parlait.",
+        "Les enfants de la maison des voisins lui parlait.",
         "« Les enfants lui parlait. »",
         "— Les enfants lui parlait.",
         "Les enfant lui parlait.",
@@ -271,7 +287,12 @@ fn real_nominal_nonreflexive_clitics_cover_lexical_classes_and_context() {
         for text in unsupported.iter().copied().chain(generated_declines.iter().map(String::as_str)) {
             assert!(check(text, language).is_empty(), "ambiguous/unsupported, not a precision case: {text}: {:?}", check(text, language));
         }
-        for text in ["Les enfants lui parlait.", "Les\u{a0}enfants n’y\u{202f}allait pas."] {
+        for text in [
+            "Les enfants lui parlait.",
+            "Les\u{a0}enfants n’y\u{202f}allait pas.",
+            "Les enfants lui en parlait.",
+            "Les\u{a0}enfants ne lui\u{202f}en parlait pas.",
+        ] {
             let deciding_end = text.len() - 1;
             let mut segments = Vec::new();
             let mut cursor = 0;

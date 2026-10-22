@@ -23,7 +23,7 @@ struct Candidate<'a> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Clitic {
+pub(super) enum Clitic {
     Me,
     Te,
     Se,
@@ -49,7 +49,7 @@ impl Clitic {
             Self::En => 5,
         }
     }
-    fn word(self) -> Option<&'static str> {
+    pub(super) fn word(self) -> Option<&'static str> {
         Some(match self {
             Self::Me => "me",
             Self::Te => "te",
@@ -75,7 +75,7 @@ impl Clitic {
             _ => None,
         }
     }
-    fn full(word: &str) -> Option<Self> {
+    pub(super) fn full(word: &str) -> Option<Self> {
         Some(match word {
             "me" => Self::Me,
             "te" => Self::Te,
@@ -116,7 +116,7 @@ impl Clitic {
     }
 }
 
-fn push_clitic(clitics: &mut Vec<Clitic>, clitic: Clitic, target: Person) -> Option<()> {
+pub(super) fn push_clitic(clitics: &mut Vec<Clitic>, clitic: Clitic, target: Person) -> Option<()> {
     if clitics.len() >= 3
         || clitics.last().is_some_and(|last| last.rank() >= clitic.rank())
         || (clitic == Clitic::Se && !matches!(target, Person::ThirdSingular | Person::ThirdPlural))
@@ -132,8 +132,12 @@ fn horizontal(gap: &str) -> bool {
 }
 
 fn candidate<'a>(text: &'a str, ws: &[(usize, usize)]) -> Option<Candidate<'a>> {
+    candidate_after(text, ws, 0)
+}
+
+fn candidate_after<'a>(text: &'a str, ws: &[(usize, usize)], prefix_end: usize) -> Option<Candidate<'a>> {
     let &(a, b) = ws.first()?;
-    let before = text.get(..a)?;
+    let before = text.get(prefix_end..a)?;
     let leading = before.trim();
     if !leading.is_empty() && !(matches!(leading, "—" | "–" | "-") && before.chars().last().is_some_and(char::is_whitespace)) {
         return None;
@@ -367,6 +371,16 @@ fn check_candidate(text: &str, ws: &[(usize, usize)], lexicon: &Lexicon, candida
         forms
     };
     Some(grammar::issue(start, candidate.end, message.into(), suggestions))
+}
+
+/// Reuse the personal candidate and all ambiguity checks after a separately validated
+/// coordinated head. The caller supplies original word offsets, never rewritten text.
+pub(super) fn check_at_subject(text: &str, ws: &[(usize, usize)], subject_start: usize, lexicon: &Lexicon) -> Option<Issue> {
+    if ws.first()?.0 != subject_start {
+        return None;
+    }
+    let parsed = candidate_after(text, ws, subject_start)?;
+    check_candidate(text, ws, lexicon, parsed)
 }
 
 pub(super) fn check(text: &str, ws: &[(usize, usize)]) -> Option<Issue> {

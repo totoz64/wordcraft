@@ -193,7 +193,7 @@ fn nominal_clitic_review_keeps_objects_regions_marks_spelling_priority_and_undo(
             issues.as_array().unwrap().iter().any(|issue| issue["kind"] == "spelling" && issue["start"]["off"].as_u64() == Some(start as u64)),
             "{issues}"
         );
-        for text in ["Les enfants en route.", "Les enfants lui en parle.", "Les enfants leur parlent."] {
+        for text in ["Les enfants en route.", "Les enfants en lui parle.", "Les enfants leur parlent."] {
             let mut s = session(text, language);
             assert!(!run(&mut s, "review.issues", json!({})).as_array().unwrap().iter().any(|issue| family(issue, SUBJECT)), "{text}");
         }
