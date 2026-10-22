@@ -17,6 +17,7 @@ on:
       - 'crates/engine/tests/french_explicit_autonym_context.rs'
       - 'crates/engine/tests/french_nominal_review.rs'
       - 'crates/engine/tests/french_nominal_negative_review.rs'
+      - 'crates/engine/tests/french_nominal_clitic_review.rs'
       - 'docs/french-proofing.md'
       - 'docs/spelling-dictionaries.md'
       - '.github/workflows/french-proofing.yml'
@@ -37,6 +38,7 @@ on:
       - 'crates/engine/tests/french_explicit_autonym_context.rs'
       - 'crates/engine/tests/french_nominal_review.rs'
       - 'crates/engine/tests/french_nominal_negative_review.rs'
+      - 'crates/engine/tests/french_nominal_clitic_review.rs'
       - 'docs/french-proofing.md'
       - 'docs/spelling-dictionaries.md'
       - '.github/workflows/french-proofing.yml'
@@ -266,3 +268,11 @@ jobs:
 
       - name: Negative nominal French subject Review, languages and undo
         run: cargo test --locked -p wordcraft-engine --test french_nominal_negative_review
+
+      - name: Required real French nominal clitic gate
+        env:
+          WORDCRAFT_DICTIONARIES: ${{ runner.temp }}/wordcraft-french-dictionary
+        run: cargo test --locked -p wordcraft-proof --test french_nominal_clitic_real -- --ignored --nocapture
+
+      - name: Nominal French clitic Review, languages and undo
+        run: cargo test --locked -p wordcraft-engine --test french_nominal_clitic_review

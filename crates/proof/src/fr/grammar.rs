@@ -484,6 +484,9 @@ pub(crate) fn has_subject_replacement_priority(text: &str, issue: &Issue) -> boo
                 source.starts_with("n’")
                     || source.starts_with("n'")
                     || source.strip_prefix("ne").and_then(|tail| tail.chars().next()).is_some_and(|c| matches!(c, ' ' | '\u{a0}' | '\u{202f}'))
+                    || ["lui", "leur", "y", "en"].into_iter().any(|clitic| {
+                        source.strip_prefix(clitic).and_then(|tail| tail.chars().next()).is_some_and(|c| matches!(c, ' ' | '\u{a0}' | '\u{202f}'))
+                    })
             }))
 }
 
