@@ -1,7 +1,7 @@
 //! Bounded agreement with a determiner-led common-noun subject.
 //! This recognises sentence starts and one optional agreeing adjective, not clauses,
-//! coordination, inversion, proper names, relative subjects or intervening clitics.
-//! One immediate explicit ne/n’ + finite verb + negative marker is also recognised.
+//! coordination, inversion, proper names or relative subjects. One non-reflexive
+//! lui/leur/y/en clitic and explicit ne/n’ + negative marker are recognised.
 use std::ops::Range;
 
 use super::{
@@ -113,6 +113,7 @@ struct Predicate<'a> {
     start: usize,
     end: usize,
     form: &'a str,
+    clitic: Option<&'a str>,
     negative_marker: Option<usize>,
 }
 
@@ -125,7 +126,7 @@ fn negative_marker(form: &str) -> bool {
 fn predicate<'a>(text: &'a str, ws: &[(usize, usize)], index: usize, lexicon: &Lexicon) -> Option<Predicate<'a>> {
     let &(start, end) = ws.get(index)?;
     let token = word(text, ws, index)?;
-    let (index, end, form, negative) = if token == "ne" {
+    let (mut index, mut end, mut form, negative) = if token == "ne" {
         let next = index.checked_add(1)?;
         if !adjacent(text, ws, index, next) {
             return None;
@@ -140,7 +141,23 @@ fn predicate<'a>(text: &'a str, ws: &[(usize, usize)], index: usize, lexicon: &L
     } else {
         (index, end, lower_word(text, ws, index)?, false)
     };
-    if !finite(lexicon, form) {
+    let clitic = if matches!(form, "lui" | "leur" | "y" | "en") {
+        let clitic = form;
+        let next = index.checked_add(1)?;
+        if !adjacent(text, ws, index, next) {
+            return None;
+        }
+        let &(_, next_end) = ws.get(next)?;
+        form = lower_word(text, ws, next)?;
+        index = next;
+        end = next_end;
+        Some(clitic)
+    } else {
+        None
+    };
+    // En can be a preposition ("Les robes en voile"), leur a possessive
+    // determiner. Do not infer a verb from any ambiguous nominal/adjectival form.
+    if !finite(lexicon, form) || (clitic.is_some() && lexicon.has_nonverbal_reading(form)) {
         return None;
     }
     let negative_marker = if negative {
@@ -154,9 +171,13 @@ fn predicate<'a>(text: &'a str, ws: &[(usize, usize)], index: usize, lexicon: &L
         }
         Some(marker)
     } else {
+        let next = index.checked_add(1)?;
+        if clitic.is_some() && adjacent(text, ws, index, next) && lower_word(text, ws, next).is_some_and(negative_marker) {
+            return None; // A bare adjacent marker does not establish an explicit negative bridge.
+        }
         None
     };
-    Some(Predicate { index, start, end, form, negative_marker })
+    Some(Predicate { index, start, end, form, clitic, negative_marker })
 }
 
 fn subject_verb<'a>(text: &'a str, ws: &[(usize, usize)], start: usize, lexicon: &Lexicon, target: Person) -> Option<Predicate<'a>> {
@@ -210,11 +231,18 @@ pub(super) fn check_with(text: &str, ws: &[(usize, usize)], lexicon: &Lexicon) -
         let Some(forms) = lexicon.agreement_forms(form, target) else {
             continue;
         };
-        let forms = if predicate.negative_marker.is_some() {
+        let forms = if predicate.negative_marker.is_some() || predicate.clitic.is_some() {
             let Some(rendered) = forms
                 .into_iter()
                 .map(|form| {
-                    super::subject_agreement::known_elision(&form).map(|elides| if elides { format!("n’{form}") } else { format!("ne {form}") })
+                    let first = predicate.clitic.unwrap_or(&form);
+                    let phrase = predicate.clitic.map_or_else(|| form.clone(), |clitic| format!("{clitic} {form}"));
+                    if predicate.negative_marker.is_some() {
+                        super::subject_agreement::known_elision(first)
+                            .map(|elides| if elides { format!("n’{phrase}") } else { format!("ne {phrase}") })
+                    } else {
+                        Some(phrase)
+                    }
                 })
                 .collect::<Option<Vec<_>>>()
             else {
@@ -258,6 +286,18 @@ mod tests {
 
     fn fixture() -> Lexicon {
         let rows = [
+            ("parle", "parler", "v1 ipre 1sg 3sg"),
+            ("parlent", "parler", "v1 ipre 3pl"),
+            ("parlant", "parler", "v1 ppre"),
+            ("parlait", "parler", "v1 iimp 1sg 3sg"),
+            ("parlaient", "parler", "v1 iimp 3pl"),
+            ("répond", "répondre", "v3 ipre 3sg"),
+            ("répondent", "répondre", "v3 ipre 3pl"),
+            ("va", "aller", "v3 ipre 3sg"),
+            ("vont", "aller", "v3 ipre 3pl"),
+            ("route", "route", "nom fem sg"),
+            ("route", "router", "v1 ipre 1sg 3sg"),
+            ("routent", "router", "v1 ipre 3pl"),
             ("enfant", "enfant", "nom epi sg"),
             ("petit", "petit", "adj mas sg"),
             ("est", "être", "v0 ipre 3sg"),
@@ -443,6 +483,75 @@ mod tests {
         assert_eq!(found(text, &lexicon)[0].1, 0..text.len() - 1, "the homograph's complete bounded tail is deciding context");
         let issues = found("Les enfants ne joue pas. Les maisons ne tombe pas.", &lexicon);
         assert_eq!(issues.len(), 2);
+    }
+
+    #[test]
+    fn nominal_subject_single_nonreflexive_clitic_preserves_person_tense_and_negation() {
+        let lexicon = fixture();
+        for (text, wrong, right) in [
+            ("Les enfants lui parle.", "lui parle", "lui parlent"),
+            ("Le enfant leur parlent.", "leur parlent", "leur parle"),
+            ("Les petits enfants lui parlait.", "lui parlait", "lui parlaient"),
+            ("Les enfants leur répond.", "leur répond", "leur répondent"),
+            ("Les enfants y va.", "y va", "y vont"),
+            ("Le enfant en ont besoin.", "en ont", "en a"),
+            ("Les enfants ne lui parle pas.", "ne lui parle", "ne lui parlent"),
+            ("Les enfants ne leur répond plus.", "ne leur répond", "ne leur répondent"),
+            ("Les enfants n’y va jamais.", "n’y va", "n’y vont"),
+            ("Le enfant n'en ont guère besoin.", "n'en ont", "n’en a"),
+            ("Les enfants ne lui parlait point.", "ne lui parlait", "ne lui parlaient"),
+            ("Bonjour. Les enfants lui parle.", "lui parle", "lui parlent"),
+            ("Les\u{a0}enfants\u{202f}ne\u{a0}lui\u{202f}parle pas.", "ne\u{a0}lui\u{202f}parle", "ne lui parlent"),
+        ] {
+            let found = found(text, &lexicon);
+            assert_eq!(found.len(), 1, "{text}: {found:?}");
+            let (issue, context) = &found[0];
+            assert_eq!(&text[issue.start..issue.end], wrong, "{text}");
+            assert_eq!(issue.suggestions, [right], "{text}");
+            assert!(context.start < issue.start && context.end >= issue.end);
+            let fixed = format!("{}{right}{}", &text[..issue.start], &text[issue.end..]);
+            assert!(super::check_with(&fixed, &crate::words(&fixed), &lexicon).is_empty(), "{fixed}");
+        }
+    }
+
+    #[test]
+    fn nominal_subject_single_clitic_keeps_correct_nominal_and_unsupported_readings() {
+        let lexicon = fixture();
+        for text in [
+            "Les enfants lui parlent.",
+            "Le enfant leur parle.",
+            "Les enfants y vont.",
+            "Le enfant en a besoin.",
+            "Les enfants ne lui parlent pas.",
+            "Les enfants n’y vont jamais.",
+            "Les enfants en route.",
+            "Les enfants leur guide.",
+            "Les enfants en garde.",
+            "Les enfants en parlant.",
+            "Les enfants ne lui joue pas.",
+            "Les enfants leur pilote.",
+            "Les enfants lui en parle.",
+            "Les enfants y en a.",
+            "Les enfants lui lui parle.",
+            "Les enfants le parle.",
+            "Les enfants se parle.",
+            "Les enfants l’ont.",
+            "Les enfants lui parle pas.",
+            "Les enfants ne lui parle.",
+            "Les enfants ne lui parle que demain.",
+            "Les enfants ne lui parle plus jamais.",
+            "Les enfants n’ y va pas.",
+            "Les enfants lui\nparle.",
+            "Les enfants lui, parle.",
+            "Les enfants LUI parle.",
+            "Les enfants de la maison lui parle.",
+            "Les enfants qui lui parle arrivent.",
+            "« Les enfants lui parle. »",
+            "— Les enfants lui parle.",
+        ] {
+            assert!(found(text, &lexicon).is_empty(), "{text}: {:?}", found(text, &lexicon));
+        }
+        assert!(found("Les enfants lui parle.", &Lexicon::builtins()).is_empty());
     }
 
     #[test]
