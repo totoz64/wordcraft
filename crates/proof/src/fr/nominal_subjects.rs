@@ -1,12 +1,14 @@
 //! Bounded agreement with a determiner-led common-noun subject.
 //! This recognises sentence starts and one optional agreeing adjective, not clauses,
 //! coordination, inversion, proper names or relative subjects. One non-reflexive
-//! lui/leur/y/en clitic and explicit ne/n’ + negative marker are recognised.
+//! lui/leur/y/en, the bounded lui en / leur en pairs, and explicit negation are recognised.
+//! Plural heads also admit one short determined complement with a closed adverb tail.
 use std::ops::Range;
 
 use super::{
     grammar,
     morphology::{Lexicon, Person},
+    subject_agreement::{Clitic, push_clitic},
 };
 use crate::Issue;
 
@@ -113,8 +115,9 @@ struct Predicate<'a> {
     start: usize,
     end: usize,
     form: &'a str,
-    clitic: Option<&'a str>,
+    clitics: [Option<Clitic>; 2],
     negative_marker: Option<usize>,
+    context_end: Option<usize>,
 }
 
 fn negative_marker(form: &str) -> bool {
@@ -123,7 +126,7 @@ fn negative_marker(form: &str) -> bool {
 
 /// A single explicit negative construction is a bounded bridge, never arbitrary
 /// skipped words. Elision and the following marker are part of the deciding range.
-fn predicate<'a>(text: &'a str, ws: &[(usize, usize)], index: usize, lexicon: &Lexicon) -> Option<Predicate<'a>> {
+fn predicate<'a>(text: &'a str, ws: &[(usize, usize)], index: usize, lexicon: &Lexicon, target: Person) -> Option<Predicate<'a>> {
     let &(start, end) = ws.get(index)?;
     let token = word(text, ws, index)?;
     let (mut index, mut end, mut form, negative) = if token == "ne" {
@@ -141,8 +144,15 @@ fn predicate<'a>(text: &'a str, ws: &[(usize, usize)], index: usize, lexicon: &L
     } else {
         (index, end, lower_word(text, ws, index)?, false)
     };
-    let clitic = if matches!(form, "lui" | "leur" | "y" | "en") {
-        let clitic = form;
+    // Reuse the personal-subject representation and its ordering check. This
+    // parser deliberately admits only two non-reflexive pairs, not every rank
+    // combination: lui/leur + en. The temporary vector never retains more than two clitics.
+    let mut clitics = Vec::new();
+    while let Some(clitic) = Clitic::full(form).filter(|clitic| matches!(clitic, Clitic::Lui | Clitic::Leur | Clitic::Y | Clitic::En)) {
+        if clitics.len() >= 2 || clitics.first().is_some_and(|first| !matches!((*first, clitic), (Clitic::Lui | Clitic::Leur, Clitic::En))) {
+            return None;
+        }
+        push_clitic(&mut clitics, clitic, target)?;
         let next = index.checked_add(1)?;
         if !adjacent(text, ws, index, next) {
             return None;
@@ -151,13 +161,10 @@ fn predicate<'a>(text: &'a str, ws: &[(usize, usize)], index: usize, lexicon: &L
         form = lower_word(text, ws, next)?;
         index = next;
         end = next_end;
-        Some(clitic)
-    } else {
-        None
-    };
+    }
     // En can be a preposition ("Les robes en voile"), leur a possessive
     // determiner. Do not infer a verb from any ambiguous nominal/adjectival form.
-    if !finite(lexicon, form) || (clitic.is_some() && lexicon.has_nonverbal_reading(form)) {
+    if !finite(lexicon, form) || (!clitics.is_empty() && lexicon.has_nonverbal_reading(form)) {
         return None;
     }
     let negative_marker = if negative {
@@ -172,12 +179,102 @@ fn predicate<'a>(text: &'a str, ws: &[(usize, usize)], index: usize, lexicon: &L
         Some(marker)
     } else {
         let next = index.checked_add(1)?;
-        if clitic.is_some() && adjacent(text, ws, index, next) && lower_word(text, ws, next).is_some_and(negative_marker) {
+        if !clitics.is_empty() && adjacent(text, ws, index, next) && lower_word(text, ws, next).is_some_and(negative_marker) {
             return None; // A bare adjacent marker does not establish an explicit negative bridge.
         }
         None
     };
-    Some(Predicate { index, start, end, form, clitic, negative_marker })
+    Some(Predicate { index, start, end, form, clitics: [clitics.first().copied(), clitics.get(1).copied()], negative_marker, context_end: None })
+}
+
+/// One determined nominal complement of a plural head, not a general PP parser.
+/// Singular heads remain out: morphology does not classify collective nouns.
+fn expanded_predicate<'a>(text: &'a str, ws: &[(usize, usize)], index: usize, lexicon: &Lexicon, target: Person) -> Option<Predicate<'a>> {
+    if let Some(found) = predicate(text, ws, index, lexicon, target) {
+        return Some(found);
+    }
+    if target != Person::ThirdPlural {
+        return None;
+    }
+    let next = index.checked_add(1)?;
+    if !adjacent(text, ws, index, next) {
+        return None;
+    }
+    let (noun_index, complement_number, noun) = match lower_word(text, ws, index)? {
+        "du" => (next, Person::ThirdSingular, lower_word(text, ws, next)?),
+        "des" => (next, Person::ThirdPlural, lower_word(text, ws, next)?),
+        "de" => {
+            let token = word(text, ws, next)?;
+            if let Some(noun) = token.strip_prefix("l’").or_else(|| token.strip_prefix("l'")) {
+                if noun.is_empty() || !noun.chars().all(char::is_lowercase) {
+                    return None;
+                }
+                (next, Person::ThirdSingular, noun)
+            } else {
+                // Bare de + noun and malformed de le/de les are not determined complements.
+                if matches!(token, "le" | "les" | "des") {
+                    return None;
+                }
+                if !token.chars().all(char::is_lowercase) {
+                    return None;
+                }
+                let number = determiner(token)?;
+                let noun_index = next.checked_add(1)?;
+                if !adjacent(text, ws, next, noun_index) {
+                    return None;
+                }
+                (noun_index, number, lower_word(text, ws, noun_index)?)
+            }
+        }
+        _ => return None,
+    };
+    if complement_mentions_word(noun) || lexicon.unique_noun_number(noun) != Some(complement_number) {
+        return None;
+    }
+    let verb_index = noun_index.checked_add(1)?;
+    if !adjacent(text, ws, noun_index, verb_index) {
+        return None;
+    }
+    let mut found = predicate(text, ws, verb_index, lexicon, target)?;
+    if lexicon.has_nonverbal_reading(found.form) {
+        return None;
+    }
+    found.context_end = Some(homograph_context_end(text, ws, found.negative_marker.unwrap_or(found.index))?);
+    Some(found)
+}
+
+// Explicit word/title labels can introduce an unquoted autonym. These original
+// semantic label facts apply only to the new complement path; noun number alone
+// cannot prove that a following recorded finite form is being used as a verb.
+fn complement_mentions_word(word: &str) -> bool {
+    metalinguistic(word)
+        || matches!(
+            word,
+            "terme"
+                | "termes"
+                | "nom"
+                | "noms"
+                | "titre"
+                | "titres"
+                | "expression"
+                | "expressions"
+                | "énoncé"
+                | "énoncés"
+                | "lexème"
+                | "lexèmes"
+                | "syntagme"
+                | "syntagmes"
+                | "citation"
+                | "citations"
+                | "inscription"
+                | "inscriptions"
+                | "intitulé"
+                | "intitulés"
+        )
+}
+
+fn metalinguistic(word: &str) -> bool {
+    matches!(word, "mot" | "mots" | "verbe" | "verbes" | "forme" | "formes" | "exemple" | "exemples" | "infinitif" | "infinitifs")
 }
 
 fn subject_verb<'a>(text: &'a str, ws: &[(usize, usize)], start: usize, lexicon: &Lexicon, target: Person) -> Option<Predicate<'a>> {
@@ -188,7 +285,7 @@ fn subject_verb<'a>(text: &'a str, ws: &[(usize, usize)], start: usize, lexicon:
         return None;
     }
     let a = lower_word(text, ws, first)?;
-    if matches!(a, "mot" | "mots" | "verbe" | "verbes" | "forme" | "formes" | "exemple" | "exemples" | "infinitif" | "infinitifs") {
+    if metalinguistic(a) {
         return None;
     }
     let b = word(text, ws, second)?;
@@ -200,11 +297,11 @@ fn subject_verb<'a>(text: &'a str, ws: &[(usize, usize)], start: usize, lexicon:
     if adjacent(text, ws, second, third)
         && ((lexicon.unique_noun_number(a) == Some(target) && lexicon.adjective_matches_number(b, target))
             || (lexicon.adjective_matches_number(a, target) && lexicon.unique_noun_number(b) == Some(target)))
-        && let Some(predicate) = predicate(text, ws, third, lexicon)
+        && let Some(predicate) = expanded_predicate(text, ws, third, lexicon, target)
     {
         return Some(predicate);
     }
-    if lexicon.unique_noun_number(a) == Some(target) { predicate(text, ws, second, lexicon) } else { None }
+    if lexicon.unique_noun_number(a) == Some(target) { expanded_predicate(text, ws, second, lexicon, target) } else { None }
 }
 
 pub(super) fn check_with(text: &str, ws: &[(usize, usize)], lexicon: &Lexicon) -> Vec<(Issue, Range<usize>)> {
@@ -231,12 +328,15 @@ pub(super) fn check_with(text: &str, ws: &[(usize, usize)], lexicon: &Lexicon) -
         let Some(forms) = lexicon.agreement_forms(form, target) else {
             continue;
         };
-        let forms = if predicate.negative_marker.is_some() || predicate.clitic.is_some() {
+        let forms = if predicate.negative_marker.is_some() || predicate.clitics.first().copied().flatten().is_some() {
             let Some(rendered) = forms
                 .into_iter()
                 .map(|form| {
-                    let first = predicate.clitic.unwrap_or(&form);
-                    let phrase = predicate.clitic.map_or_else(|| form.clone(), |clitic| format!("{clitic} {form}"));
+                    let first = predicate.clitics.first().copied().flatten().and_then(Clitic::word).unwrap_or(&form);
+                    let mut phrase = form.clone();
+                    for clitic in predicate.clitics.iter().flatten().rev() {
+                        phrase = format!("{} {phrase}", clitic.word()?);
+                    }
                     if predicate.negative_marker.is_some() {
                         super::subject_agreement::known_elision(first)
                             .map(|elides| if elides { format!("n’{phrase}") } else { format!("ne {phrase}") })
@@ -256,7 +356,9 @@ pub(super) fn check_with(text: &str, ws: &[(usize, usize)], lexicon: &Lexicon) -
             continue;
         };
         let deciding_index = predicate.negative_marker.unwrap_or(predicate.index);
-        let context_end = if lexicon.has_nonverbal_reading(form) {
+        let context_end = if let Some(end) = predicate.context_end {
+            end
+        } else if lexicon.has_nonverbal_reading(form) {
             let Some(end) = homograph_context_end(text, ws, deciding_index) else {
                 continue;
             };
@@ -286,6 +388,17 @@ mod tests {
 
     fn fixture() -> Lexicon {
         let rows = [
+            ("voisine", "voisin", "nom fem sg"),
+            ("voisin", "voisin", "nom mas sg"),
+            ("voisins", "voisin", "nom mas pl"),
+            ("ami", "ami", "nom mas sg"),
+            ("sœur", "sœur", "nom fem sg"),
+            ("lettres", "lettre", "nom fem pl"),
+            ("terme", "terme", "nom mas sg"),
+            ("titre", "titre", "nom mas sg"),
+            ("nom", "nom", "nom mas sg"),
+            ("mot", "mot", "nom mas sg"),
+            ("majorité", "majorité", "nom fem sg"),
             ("parle", "parler", "v1 ipre 1sg 3sg"),
             ("parlent", "parler", "v1 ipre 3pl"),
             ("parlant", "parler", "v1 ppre"),
@@ -486,6 +599,49 @@ mod tests {
     }
 
     #[test]
+    fn plural_subject_expansion_keeps_head_and_complete_context() {
+        let lexicon = fixture();
+        for (text, wrong, right) in [
+            ("Les enfants de la voisine parlait.", "parlait", "parlaient"),
+            ("Les enfants de ma sœur parlait.", "parlait", "parlaient"),
+            ("Les enfants des voisins parlait.", "parlait", "parlaient"),
+            ("Les enfants du voisin lui parle.", "lui parle", "lui parlent"),
+            ("Les enfants de l’ami n’y va pas.", "n’y va", "n’y vont"),
+            ("Les petits enfants de l'ami parlait ici.", "parlait", "parlaient"),
+            ("Bonjour. Les enfants de la voisine ne lui parle jamais.", "ne lui parle", "ne lui parlent"),
+        ] {
+            let found = found(text, &lexicon);
+            assert_eq!(found.len(), 1, "{text}: {found:?}");
+            let (issue, context) = &found[0];
+            assert_eq!(&text[issue.start..issue.end], wrong);
+            assert_eq!(issue.suggestions, [right]);
+            assert_eq!(context.end, text.len() - 1);
+            let fixed = format!("{}{right}{}", &text[..issue.start], &text[issue.end..]);
+            assert!(super::check_with(&fixed, &crate::words(&fixed), &lexicon).is_empty(), "{fixed}");
+        }
+        for text in [
+            "Les enfants de ma sœur parlaient.",
+            "Les enfants de la voisine joue.",
+            "La majorité des voisins parlent.",
+            "Les enfants de voisins parlait.",
+            "Les enfants de les voisins parlait.",
+            "Les enfants de la petite voisine parlait.",
+            "Les enfants de la sœur des voisins parlait.",
+            "Les lettres du mot parle.",
+            "Les lettres du terme parle.",
+            "Les lettres du titre parle.",
+            "Les lettres du nom parle.",
+            "Les lettres du mot parle ici.",
+            "Les enfants de la voisine parle les voisins.",
+            "Les enfants de la voisine lui parle les voisins.",
+            "Les enfants de la voisine, parlait.",
+            "Les enfants de la voisine\nparlait.",
+        ] {
+            assert!(found(text, &lexicon).is_empty(), "{text}: {:?}", found(text, &lexicon));
+        }
+    }
+
+    #[test]
     fn nominal_subject_single_nonreflexive_clitic_preserves_person_tense_and_negation() {
         let lexicon = fixture();
         for (text, wrong, right) in [
@@ -530,7 +686,7 @@ mod tests {
             "Les enfants en parlant.",
             "Les enfants ne lui joue pas.",
             "Les enfants leur pilote.",
-            "Les enfants lui en parle.",
+            "Les enfants en lui parle.",
             "Les enfants y en a.",
             "Les enfants lui lui parle.",
             "Les enfants le parle.",
@@ -544,7 +700,7 @@ mod tests {
             "Les enfants lui\nparle.",
             "Les enfants lui, parle.",
             "Les enfants LUI parle.",
-            "Les enfants de la maison lui parle.",
+            "Les enfants de la maison des voisins lui parle.",
             "Les enfants qui lui parle arrivent.",
             "« Les enfants lui parle. »",
             "— Les enfants lui parle.",
@@ -552,6 +708,71 @@ mod tests {
             assert!(found(text, &lexicon).is_empty(), "{text}: {:?}", found(text, &lexicon));
         }
         assert!(found("Les enfants lui parle.", &Lexicon::builtins()).is_empty());
+    }
+
+    #[test]
+    fn nominal_subject_bounded_indirect_chains_share_order_and_preserve_finite_tense() {
+        let lexicon = fixture();
+        for (text, wrong, right) in [
+            ("Les enfants lui en parle.", "lui en parle", "lui en parlent"),
+            ("Le enfant leur en parlent.", "leur en parlent", "leur en parle"),
+            ("Les petits enfants lui en parlait.", "lui en parlait", "lui en parlaient"),
+            ("Le petit enfant leur en parlaient.", "leur en parlaient", "leur en parlait"),
+            ("Les enfants ne lui en parle pas.", "ne lui en parle", "ne lui en parlent"),
+            ("Les enfants ne leur en parlait jamais.", "ne leur en parlait", "ne leur en parlaient"),
+            ("Le enfant ne leur en parlent plus.", "ne leur en parlent", "ne leur en parle"),
+            ("Les enfants n’lui en parle pas.", "n’lui en parle", "ne lui en parlent"),
+            ("Les enfants n'leur en parlait point.", "n'leur en parlait", "ne leur en parlaient"),
+            ("Bonjour. Les enfants lui en parle.", "lui en parle", "lui en parlent"),
+            ("Les\u{a0}enfants ne\u{202f}lui\u{a0}en parle pas.", "ne\u{202f}lui\u{a0}en parle", "ne lui en parlent"),
+        ] {
+            let issues = found(text, &lexicon);
+            assert_eq!(issues.len(), 1, "{text}: {issues:?}");
+            let (issue, context) = &issues[0];
+            let start = text.find(wrong).unwrap();
+            assert_eq!((issue.start, issue.end), (start, start + wrong.len()), "{text}");
+            assert_eq!(issue.suggestions, [right], "{text}");
+            assert!(context.start < issue.start && context.end >= issue.end, "{text}: {context:?}");
+            if let Some(marker) = ["pas", "plus", "jamais", "guère", "point"].into_iter().find(|marker| text.ends_with(&format!("{marker}."))) {
+                assert_eq!(context.end, text.find(marker).unwrap() + marker.len(), "negative marker belongs to deciding context");
+            }
+            let fixed = format!("{}{right}{}", &text[..start], &text[start + wrong.len()..]);
+            assert!(found(&fixed, &lexicon).is_empty(), "unstable correction: {fixed}");
+        }
+    }
+
+    #[test]
+    fn nominal_subject_chain_scope_keeps_ambiguous_and_unparsed_material_quiet() {
+        let lexicon = fixture();
+        for text in [
+            "Les enfants lui en parlent.",
+            "Le enfant leur en parle.",
+            "Les enfants ne lui en parlent pas.",
+            "Les enfants lui en garde.",
+            "Les enfants leur en pilote.",
+            "Les enfants lui en joue.",
+            "Les enfants en lui parle.",
+            "Les enfants lui leur parle.",
+            "Les enfants lui lui parle.",
+            "Les enfants leur leur parle.",
+            "Les enfants lui y parle.",
+            "Les enfants leur y parle.",
+            "Les enfants y en parle.",
+            "Les enfants lui y en parle.",
+            "Les enfants le lui parle.",
+            "Les enfants se en parle.",
+            "Les enfants l’en parle.",
+            "Les enfants lui en ne parle pas.",
+            "Les enfants ne lui en parle.",
+            "Les enfants lui en parle pas.",
+            "Les enfants ne lui en parle plus jamais.",
+            "Les enfants lui, en parle.",
+            "Les enfants lui en\nparle.",
+            "Les enfants LUI en parle.",
+            "Les enfants lui En parle.",
+        ] {
+            assert!(found(text, &lexicon).is_empty(), "{text}: {:?}", found(text, &lexicon));
+        }
     }
 
     #[test]

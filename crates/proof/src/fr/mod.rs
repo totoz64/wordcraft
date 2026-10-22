@@ -14,6 +14,7 @@
 
 mod agreement;
 mod conjugation;
+mod coordinated_subjects;
 pub mod grammar;
 pub mod morphology;
 mod nominal_agreement;
