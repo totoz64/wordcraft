@@ -1,0 +1,33 @@
+name: French prefix operation profile
+on:
+  push:
+    branches: [bench/french-prefix-index]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  operation-profile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WORDCRAFT_DICTIONARIES: ${{ github.workspace }}/benchmark-data/dictionary
+      BENCHMARK_DICTIONARY_ONLY: '1'
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: '1.98.1'
+          components: rustfmt
+      - name: Verify external runtime dictionary
+        run: python3 tools/affix-performance/prepare_inputs.py
+      - name: Record operation counts for original fixed probes
+        run: |
+          rustc --version --verbose
+          cargo test --locked --release -p wordcraft-proof --lib profile_prefix_continuation_work -- --ignored --nocapture | tee prefix-operation-profile.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: prefix-operation-profile
+          path: prefix-operation-profile.log
+          if-no-files-found: error

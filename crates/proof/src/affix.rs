@@ -63,6 +63,24 @@ pub const MAX_FLAGS: usize = 512;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 struct FlagSet([u64; MAX_FLAGS / 64]);
 
+
+#[cfg(test)]
+std::thread_local! {
+    static PREFIX_PROFILE_COUNTS: std::cell::Cell<[u64; 5]> = const { std::cell::Cell::new([0; 5]) };
+    static PREFIX_PROFILE_GRANTS: std::cell::Cell<FlagSet> = const { std::cell::Cell::new(FlagSet([0; MAX_FLAGS / 64])) };
+}
+
+#[cfg(test)]
+fn prefix_profile_count(index: usize) {
+    PREFIX_PROFILE_COUNTS.with(|counter| {
+        let mut values = counter.get();
+        if let Some(value) = values.get_mut(index) {
+            *value = value.saturating_add(1);
+        }
+        counter.set(values);
+    });
+}
+
 impl FlagSet {
     fn single(i: usize) -> FlagSet {
         let mut s = FlagSet::default();
@@ -929,11 +947,24 @@ impl AffixDict {
     /// This separate path strips exactly one prefix under one suffix; it never recurses or
     /// changes the historical suffix-continuation walk.
     fn prefix_grants(&self, w: &str, ordinary: FlagSet, needing: FlagSet, reject: FlagSet) -> bool {
+        #[cfg(test)]
+        prefix_profile_count(0);
         if ordinary.is_empty() && needing.is_empty() {
             return false;
         }
+        #[cfg(test)]
+        {
+            prefix_profile_count(1);
+            PREFIX_PROFILE_GRANTS.with(|mask| {
+                if !ordinary.union(needing).intersects(mask.get()) {
+                    prefix_profile_count(2);
+                }
+            });
+        }
         let mut root = String::with_capacity(w.len() + 8);
         for r in &self.prefixes {
+            #[cfg(test)]
+            prefix_profile_count(3);
             // Two affixes that each require a further affix cannot satisfy each other.
             let allowed = if r.needs_affix { ordinary } else { ordinary.union(needing) };
             if !r.cross || !r.cont.intersects(allowed) {
@@ -949,6 +980,8 @@ impl AffixDict {
             if root.is_empty() || root.len() > MAX_WORD_BYTES || !r.cond_matches(&root, false) {
                 continue;
             }
+            #[cfg(test)]
+            prefix_profile_count(4);
             if self.stem_flags(&root, reject).is_some_and(|f| f.intersects(r.bit)) {
                 return true;
             }
@@ -1346,6 +1379,28 @@ pub(crate) mod tests {
 
     const AFF: &str = "SET UTF-8\nTRY aeoiułkr\n\nPFX b Y 1\nPFX b   0   nie   .\n\nSFX a Y 3\nSFX a   0   y     [^y]\nSFX a   ek  ka    ek\nSFX a   0   em    .\n\nSFX c N 1\nSFX c   a   ą     a\n\nMAP 2\nMAP aą\nMAP oóu\nREP 2\nREP ż rz\nREP u ó\n";
     const DIC: &str = "4\nkot/ab\npiesek/a\nkrowa/c\nWarszawa/c\n";
+
+
+    #[test]
+    #[ignore = "operation profiling requires checksum-pinned French dictionary"]
+    fn profile_prefix_continuation_work() {
+        let d = crate::fr::dictionary();
+        assert!(d.len() > 50_000);
+        let possible = d.prefixes.iter().filter(|r| r.cross).fold(FlagSet::default(), |flags, r| flags.union(r.cont));
+        PREFIX_PROFILE_GRANTS.with(|mask| mask.set(possible));
+        PREFIX_PROFILE_COUNTS.with(|counter| counter.set([0; 5]));
+        let mut checked = 0u64;
+        let mut candidates = 0usize;
+        for word in ["centimètres", "grammes", "maisonn", "documant", "ecole", "bonjourxx", "réclammation", "zzxyabc"] {
+            checked += u64::from(d.check(word));
+            candidates += crate::fr::suggest(word, 6).len();
+        }
+        PREFIX_PROFILE_COUNTS.with(|counter| {
+            let [calls, nonempty, disjoint, visited, root_lookups] = counter.get();
+            println!("PREFIX_PROFILE {{\"calls\":{calls},\"nonempty\":{nonempty},\"disjoint_grant_masks\":{disjoint},\"prefix_rules_visited\":{visited},\"stem_lookups\":{root_lookups},\"prefix_rules\":{},\"checked_words\":8,\"accepted\":{checked},\"candidate_count\":{candidates}}}", d.prefixes.len());
+            assert!(calls > 0 && visited > 0);
+        });
+    }
 
     fn dict() -> AffixDict {
         AffixDict::from_hunspell(AFF, DIC, &["test data"]).unwrap()
