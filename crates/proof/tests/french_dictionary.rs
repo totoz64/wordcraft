@@ -30,6 +30,12 @@ fn real_french_dictionary_spelling_suggestions_and_dispatch() {
         "chevaux",
         "heureuse",
         "va-t-il",
+        "grammes",
+        "centimètres",
+        "milligrammes",
+        "nanomètres",
+        "kilogrammes",
+        "mètres",
     ] {
         assert!(fr::is_correct(word), "correct French word: {word}");
     }
@@ -46,6 +52,9 @@ fn real_french_dictionary_spelling_suggestions_and_dispatch() {
         assert_eq!(&text[issue.start..issue.end], "maisonn");
         assert_eq!(issue.lang, lang);
         assert_eq!(issue.message, "Faute d’orthographe possible");
+    }
+    for word in ["centtimètres", "grammess", "centimètress", "nanomètress"] {
+        assert!(!fr::is_correct(word), "invalid unit spelling: {word}");
     }
     check_combining_marks_and_compounds();
     assert!(wordcraft_proof::dictionary_load_error(ProofLang::Fr).is_none());
