@@ -11237,3 +11237,74 @@ fn scale_font_sizes_reaches_char_table_and_cs_sizes_and_unset_default() {
     assert_eq!(grid.header_chr.size, Some(16.0));
     assert_eq!(grid.regions.get(&TablePart::Band2Horz).unwrap().chr.size, Some(10.0));
 }
+
+
+#[test]
+fn french_proofing_through_the_review_commands_subject_agreement() {
+    french_test_dictionary();
+    for lang in ["fr-FR", "fr-CA"] {
+        for (source, old, new) in [
+            ("Ils mange une pomme.", "mange", "mangent"),
+            ("Elle parles à Luc.", "parles", "parle"),
+            ("J’écoutons la radio.", "écoutons", "écoute"),
+            ("\u{A0}Tu pre\u{301}pare le repas.", "pre\u{301}pare", "prépares"),
+        ] {
+            let mut session = s();
+            run(&mut session, "document.setText", json!({"text": source}));
+            run(&mut session, "select.all", json!({}));
+            run(&mut session, "review.language", json!({"lang": lang}));
+            let issues = run(&mut session, "review.issues", json!({}));
+            let issue = issues
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|i| i["kind"] == "grammar" && i["suggestions"][0] == new)
+                .unwrap_or_else(|| panic!("{lang} {source:?}: {issues}"));
+            let start = source.find(old).unwrap();
+            assert_eq!(issue["text"], old);
+            assert_eq!(issue["start"]["off"], start);
+            assert_eq!(issue["end"]["off"], start + old.len());
+            assert_eq!(text(&session), source);
+            let mut expected = source.to_string();
+            expected.replace_range(start..start + old.len(), new);
+            for reversed in [false, true] {
+                let (anchor, focus) = if reversed { (&issue["end"], &issue["start"]) } else { (&issue["start"], &issue["end"]) };
+                run(&mut session, "select.range", json!({"anchor": anchor, "focus": focus}));
+                run(&mut session, "review.applySuggestion", json!({"text": new}));
+                assert_eq!(text(&session), expected);
+                let after = run(&mut session, "review.issues", json!({}));
+                assert!(after.as_array().unwrap().iter().all(|i| {
+                    i["kind"] != "grammar" || !i["message"].as_str().is_some_and(|message| message.starts_with("Le verbe doit s’accorder"))
+                }));
+                run(&mut session, "edit.undo", json!({}));
+                assert_eq!(text(&session), source);
+            }
+        }
+    }
+}
+
+#[test]
+fn french_proofing_through_the_review_commands_subject_context() {
+    french_test_dictionary();
+    let source = "Ils mange une pomme.";
+    let verb = source.find("mange").unwrap();
+    for lang in ["fr-FR", "fr-CA"] {
+        for other in ["en-US", if lang == "fr-FR" { "fr-CA" } else { "fr-FR" }] {
+            for cut in [1, verb, verb + 1] {
+                for (left, right) in [(lang, other), (other, lang)] {
+                    let mut session = s();
+                    run(&mut session, "document.setText", json!({"text": source}));
+                    run(&mut session, "select.all", json!({}));
+                    run(&mut session, "review.language", json!({"lang": left}));
+                    run(&mut session, "select.range", json!({"anchor": {"block": 0, "off": cut}, "focus": {"block": 0, "off": source.len()}}));
+                    run(&mut session, "review.language", json!({"lang": right}));
+                    let issues = run(&mut session, "review.issues", json!({}));
+                    assert!(issues.as_array().unwrap().iter().all(|i| {
+                        i["kind"] != "grammar" || !i["message"].as_str().is_some_and(|message| message.starts_with("Le verbe doit s’accorder"))
+                    }), "{left} → {right} at {cut}: {issues}");
+                    assert_eq!(text(&session), source);
+                }
+            }
+        }
+    }
+}

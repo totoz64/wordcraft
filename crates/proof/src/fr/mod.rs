@@ -12,10 +12,13 @@
 //!   typos, and a dictionary scan for anything further off.
 //! - **Grammar** ([`grammar`]): French typography and a few reliable rules, with French messages.
 //!   Small context checks cover là où and selected paragraph-initial avoir expressions; they
-//!   do not provide general agreement or conjugation analysis.
+//!   do not provide general agreement or conjugation analysis. A separate bounded morphology
+//!   layer checks explicit initial pronoun subjects against known first-group paradigms.
 
+mod agreement;
 mod context;
 pub mod grammar;
+mod morphology;
 mod suggest;
 #[cfg(test)]
 pub(crate) mod test_dict;
