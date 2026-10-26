@@ -21,8 +21,8 @@
 //!   known to have a mute `h`, so aspirated ones (`le hibou`, `la hache`, `le héros`) stay quiet;
 //!   never before a proper noun, `onze`, `oui`, `y…` words (`le yaourt`) or `la une`.
 //!
-//! No agreement or conjugation rule, and no English rule (such as `a`/`an`), applies to French
-//! text.
+//! Narrow context rules cover paragraph-initial avoir expressions and selected first-group
+//! past forms, plus là où. General agreement/conjugation and English a/an rules remain out of scope.
 
 use crate::{Issue, IssueKind, ProofLang, words};
 
@@ -438,6 +438,10 @@ fn elisions(text: &str, ws: &[(usize, usize)], v: &mut Vec<Issue>) {
             continue;
         }
         let lower1 = w1.to_lowercase();
+        // Articles before a grammatical word are not an elision: la où needs là, not l’où.
+        if matches!(lower0.as_str(), "le" | "la") && matches!(lower1.as_str(), "où" | "ou") {
+            continue;
+        }
         // `le un`, `la une` (the number, the front page); a single letter only where it is a word
         // the elision is certain for (`n’a`, `qu’a`, `j’y`).
         if matches!(lower0.as_str(), "le" | "la") && matches!(lower1.as_str(), "un" | "une") {
@@ -465,6 +469,11 @@ pub fn check(text: &str) -> Vec<Issue> {
 /// Grammar issues in a paragraph of `lang` text ([`ProofLang::Fr`], or [`ProofLang::FrCa`] for
 /// Quebec typography), in order.
 pub fn check_in(text: &str, lang: ProofLang) -> Vec<Issue> {
+    check_in_with_locution_context(text, lang, |_, _| true)
+}
+
+/// Only the new locution uses this guard; existing paragraph-wide rules retain their context.
+pub(crate) fn check_in_with_locution_context(text: &str, lang: ProofLang, context_allowed: impl Fn(usize, usize) -> bool) -> Vec<Issue> {
     let ws: Vec<(usize, usize)> = words(text);
     let mut v = Vec::new();
     high_punctuation(text, lang == ProofLang::FrCa, &mut v);
@@ -473,6 +482,8 @@ pub fn check_in(text: &str, lang: ProofLang) -> Vec<Issue> {
     repeated_words(text, &ws, &mut v);
     sentence_capitals(text, &ws, &mut v);
     elisions(text, &ws, &mut v);
+    super::context::check(text, &ws, &mut v);
+    super::context::grand_chose(text, &ws, &mut v, context_allowed);
     for i in &mut v {
         i.lang = lang;
     }
@@ -649,6 +660,13 @@ mod tests {
         quiet("De a à z, le a et le b.");
         quiet("Le y et le x sont des variables. La dérivée de y.");
         quiet("Je mange de la viande.");
+    }
+
+    #[test]
+    fn location_adverb_does_not_become_an_article_elision() {
+        one("Il reste la où il habite.", "la", "là");
+        quiet("Le où et le ou sont des mots.");
+        one("Il dit de où il vient.", "de où", "d’où");
     }
 
     #[test]
