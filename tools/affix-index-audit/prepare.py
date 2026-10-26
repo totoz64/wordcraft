@@ -7,7 +7,7 @@ import urllib.request
 ROOT = pathlib.Path(__file__).parent
 SOURCES = {
     "historical": ("75c58ac46bb281d43281b0bf675442848d10b221", "cc5a88615c0d5cf4157b2f231b7c03ecb386bb4d"),
-    "current": ("a1a4e17a38df438090f3c0ebb18ec65ce91c68a7", "46bf02d996b969bd10d4b36817c57a19caffc223"),
+    "current": ("c6539d3eec77703c0b74bd062d7ce9c31b6b2762", "abefeb94df78432426b898337a33cf025e0fb03b"),
 }
 provenance = {}
 for name, (commit, blob) in SOURCES.items():
