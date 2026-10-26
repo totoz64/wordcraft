@@ -6,9 +6,7 @@ fn prefix_continuations_require_both_cross_flags_and_one_prefix() {
     for prefix in ["0", "pre"] {
         for pcross in ["Y", "N"] {
             for scross in ["Y", "N"] {
-                let aff = format!(
-                    "SET UTF-8\nPFX P {pcross} 1\nPFX P 0 {prefix}/PS .\nSFX S {scross} 1\nSFX S 0 s/S .\n"
-                );
+                let aff = format!("SET UTF-8\nPFX P {pcross} 1\nPFX P 0 {prefix}/PS .\nSFX S {scross} 1\nSFX S 0 s/S .\n");
                 let original = AffixDict::from_hunspell(&aff, "2\nroot/P\nplain\n", &[]).unwrap();
                 let compact = AffixDict::from_bytes(&original.to_bytes()).unwrap();
                 for d in [&original, &compact] {
@@ -59,7 +57,8 @@ fn prefix_continuations_respect_unicode_strip_conditions_and_bounds() {
         "NEEDAFFIX N\nPFX P Y 1\nPFX P 0 pre/SN .\nSFX S Y 1\nSFX S 0 s .\n",
         &format!("1\n{}/P\n", "a".repeat(MAX_WORD_BYTES)),
         &[],
-    ).unwrap();
+    )
+    .unwrap();
     let forms = many.forms(&"a".repeat(MAX_WORD_BYTES));
     assert!(forms.len() <= MAX_FORMS);
     assert!(forms.iter().all(|w| w.len() <= MAX_WORD_BYTES));
