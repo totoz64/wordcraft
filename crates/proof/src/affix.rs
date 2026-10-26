@@ -15,7 +15,8 @@
 //! (`FLAG long`) and numeric (`FLAG num`) flags, at most [`MAX_FLAGS`] distinct; `PFX`/`SFX`
 //! with strip, append and condition (`.`, letters, `[abc]`, `[^abc]`), cross products,
 //! continuation classes on suffixes (at most two suffixes in a row, as in Hunspell; a prefix
-//! flag in a suffix's continuation lets that prefix attach to the suffixed form),
+//! flag in a suffix's continuation lets that prefix attach to the suffixed form); a prefix's
+//! continuation can license one cross-product suffix without a suffix flag on the stem,
 //! `FORBIDDENWORD`, `NEEDAFFIX`, `KEEPCASE`, `FULLSTRIP`, `ICONV`, `NOSUGGEST` (for
 //! [`AffixDict::can_suggest`]) and the suggestion tables `TRY`, `KEY`, `MAP` and `REP`. Ignored (they
 //! only shape output or compounding hints): `OCONV`, `BREAK`, morphological fields. Rejected: compounding, `AF`/`AM` aliases,
@@ -906,7 +907,44 @@ impl AffixDict {
                     if !flags.is_empty() && self.form_has_flag(&root, flags, INNER_CHAIN, reject) {
                         return true;
                     }
+                    // Both affixes must permit a cross product. A suffix carrying NEEDAFFIX
+                    // is valid here because the prefix supplies the additional affix.
+                    let granted = g
+                        .rules
+                        .iter()
+                        .filter_map(|&i| self.suffixes.get(i as usize))
+                        .filter(|r| r.cross && r.cond_matches(&root, true))
+                        .fold(FlagSet::default(), |m, r| m.union(r.bit));
+                    if !granted.is_empty() && self.prefix_grants(&root, granted, reject) {
+                        return true;
+                    }
                 }
+            }
+        }
+        false
+    }
+
+    /// A prefix may grant a suffix class that the stem itself does not carry.
+    /// This separate path strips exactly one prefix under one suffix; it never recurses or
+    /// changes the historical suffix-continuation walk.
+    fn prefix_grants(&self, w: &str, flags: FlagSet, reject: FlagSet) -> bool {
+        let mut root = String::with_capacity(w.len() + 8);
+        for r in &self.prefixes {
+            if !r.cross || !r.cont.intersects(flags) {
+                continue;
+            }
+            let Some(rest) = w.strip_prefix(&*r.add) else { continue };
+            if rest.is_empty() && !self.full_strip {
+                continue;
+            }
+            root.clear();
+            root.push_str(&r.strip);
+            root.push_str(rest);
+            if root.is_empty() || root.len() > MAX_WORD_BYTES || !r.cond_matches(&root, false) {
+                continue;
+            }
+            if self.stem_flags(&root, reject).is_some_and(|f| f.intersects(r.bit)) {
+                return true;
             }
         }
         false
@@ -1059,6 +1097,26 @@ impl AffixDict {
                     if let Some(rest) = s.strip_prefix(&*r.strip) {
                         out.push(format!("{}{rest}", r.add));
                     }
+                }
+            }
+            // Prefix continuation classes license one suffix even when its flag is absent
+            // from the stem (for example a metric prefix followed by a plural suffix).
+            if r.cross {
+                let prefixed = format!("{}{rest}", r.add);
+                for s in self.suffixes_with(r.cont).into_iter().filter_map(|i| self.suffixes.get(i as usize)) {
+                    work += 1;
+                    if out.len() >= MAX_FORMS || work > MAX_FORMS_WORK {
+                        return out;
+                    }
+                    if !s.cross || !s.cond_matches(&prefixed, true) {
+                        continue;
+                    }
+                    let Some(base) = prefixed.strip_suffix(&*s.strip) else { continue };
+                    let next = format!("{base}{}", s.add);
+                    if next.is_empty() || next.len() > MAX_WORD_BYTES || (base.is_empty() && !self.full_strip) {
+                        continue;
+                    }
+                    out.push(next);
                 }
             }
             if out.len() >= MAX_FORMS {

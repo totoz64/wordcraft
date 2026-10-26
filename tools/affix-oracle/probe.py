@@ -21,6 +21,12 @@ for zero in (False, True):
                 words = ["root", "roots", "preroot", "preroots", "prepreroots"]
                 result = subprocess.run(["hunspell", "-l", "-d", str(base)], input="\n".join(words)+"\n", text=True, capture_output=True, check=True)
                 rejected = set(result.stdout.splitlines())
+                expected_derived = pcross == "Y" and scross == "Y"
+                derived = "roots" if zero else "preroots"
+                if (derived not in rejected) != expected_derived:
+                    raise RuntimeError(f"cross/continuation mismatch: {name}: {result.stdout!r}")
+                if "prepreroots" not in rejected:
+                    raise RuntimeError(f"unexpected stacked prefix: {name}")
                 observations.append({"fixture":name,"aff":aff,"dic":dic,"accepted":{w:w not in rejected for w in words},"stderr":result.stderr})
 version = subprocess.run(["hunspell", "-v"], text=True, capture_output=True, check=True).stdout
 output = Path("affix-oracle-observations.json")
