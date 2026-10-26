@@ -469,6 +469,11 @@ pub fn check(text: &str) -> Vec<Issue> {
 /// Grammar issues in a paragraph of `lang` text ([`ProofLang::Fr`], or [`ProofLang::FrCa`] for
 /// Quebec typography), in order.
 pub fn check_in(text: &str, lang: ProofLang) -> Vec<Issue> {
+    check_in_with_locution_context(text, lang, |_, _| true)
+}
+
+/// Only the new locution uses this guard; existing paragraph-wide rules retain their context.
+pub(crate) fn check_in_with_locution_context(text: &str, lang: ProofLang, context_allowed: impl Fn(usize, usize) -> bool) -> Vec<Issue> {
     let ws: Vec<(usize, usize)> = words(text);
     let mut v = Vec::new();
     high_punctuation(text, lang == ProofLang::FrCa, &mut v);
@@ -478,6 +483,7 @@ pub fn check_in(text: &str, lang: ProofLang) -> Vec<Issue> {
     sentence_capitals(text, &ws, &mut v);
     elisions(text, &ws, &mut v);
     super::context::check(text, &ws, &mut v);
+    super::context::grand_chose(text, &ws, &mut v, context_allowed);
     for i in &mut v {
         i.lang = lang;
     }

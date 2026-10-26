@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-26 · **Change:** minor (bounded contextual suggestions under benchmark validation); previously minor (French uppercase/number proofing options and review-record corrections); previously minor (integration with current main, shared NFC lookup and external interface catalogs); previously minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-26 · **Change:** minor (bounded grand-chose locution and language-context guard); previously minor (bounded contextual suggestions under benchmark validation); previously minor (French uppercase/number proofing options and review-record corrections); previously minor (integration with current main, shared NFC lookup and external interface catalogs); previously minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660)
 
 ## Shared-engine compatibility and reproducible CI
 
@@ -98,6 +98,7 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-26 | minor | Suggest grand-chose only after exact lower-case pas/plus/jamais; preserve whole-pair UTF-8 ranges and require all consulted context in one French language region |
 | 2026-10-26 | minor | Contextual à/où and selected avoir/participle rules compare NFC lexical copies while preserving original NFD issue ranges; regression coverage includes both French regions, replacement and undo |
 | 2026-10-26 | minor | Isolated benchmark follow-up: fix invalid article elision before ou/où, suggest là où and selected paragraph-initial avoir forms; regressions and comparative revalidation required |
 | 2026-10-26 | minor | French dispatch honours the uppercase and number ignore options; regressions cover both regions, independent choices and original UTF-8 issue ranges; progress records aligned with the current integration |
@@ -154,3 +155,42 @@ rules, or general replacement boundary handling.
 Local `cargo xtask ci` was attempted for this change but Cargo is unavailable on
 the Windows editing host. Hosted French and full-CI results must be checked on the
 published commit; this note does not claim those runs have passed.
+
+## A bounded missing-hyphen locution
+
+A separate small rule offers `grand-chose` for exact lower-case
+`pas grand chose`, `plus grand chose` and `jamais grand chose`.
+Both gaps must be one ASCII space. It replaces only `grand chose`, with
+original UTF-8 byte bounds, through the existing undoable review suggestion.
+Checking itself never rewrites the document. The negative markers are a
+conservative engineering limit, not a claim that the expression is exclusively
+negative: the [OQLF description of chose expressions](https://vitrinelinguistique.oqlf.gouv.qc.ca/22644/la-grammaire/les-pronoms/pronoms-indefinis/pronoms-indefinis-formes-avec-le-nom-chose)
+uses grand-chose especially in negative contexts and distinguishes unhyphenated
+quelque chose, autre chose and peu de chose.
+
+The new rule has a dedicated language-context guard in mixed-language proofing.
+Every byte from the negative marker through chose must fit in one merged span
+of the same French region. A formatting boundary with the same region can merge;
+French/English and fr-FR/fr-CA boundaries cannot. Existing grammar rules keep
+their previous paragraph-wide context and dispatch behavior. The direct grammar
+API continues to describe homogeneous text in its requested language.
+
+An unfinished token ending in an ASCII hyphen is also left alone.
+This rule does not change casing, spacing, historical apostrophes, dictionary
+recognition or other hyphen families. These exclusions are abstentions, not
+certification that the excluded input is correct. The [Académie entry for grand](https://www.dictionnaire-academie.fr/article/A9G1197)
+also permits grand faim/grand-faim and grand peur/grand-peur: a general
+`grand + noun` rewrite would be wrong. Traditional and rectified spellings of
+other words remain untouched; no alternative grandchose spelling is introduced.
+Au-dessus is deferred: [dessus also has a nominal use](https://vitrinelinguistique.oqlf.gouv.qc.ca/23121/la-grammaire/ladverbe/dessus-employe-comme-adverbe-nom-ou-dans-une-preposition-composee),
+and matching every au + dessus would need independent contextual adjudication.
+
+Regression inputs are 43 original authored development cases: eight proposed
+corrections, 15 quiet controls and 20 explicit abstentions. They include original
+NFD and emoji prefixes, exact-range replacement and undo, and a language split
+inside the candidate. Extra guards exercise marker gaps, case, token boundaries,
+traditional/rectified unrelated spellings and both directions of mixed language
+and mixed-region context. This is exposed development coverage, not a held-out
+quality estimate. No news corpus, external dictionary or Word-produced file is
+included in the patch. Local Cargo is unavailable; validation requires hosted
+French matrix and full-CI results for the exact published commit.

@@ -8471,7 +8471,7 @@ fn italian_proofing_through_the_review_commands() {
 
 fn french_test_dictionary() {
     let aff = "SET UTF-8\nFLAG long\nTRY esaitnrulodcpmévqfbghjàxèê\nMAP 2\nMAP eéèê\nMAP aàâ\nSFX S. Y 2\nSFX S. 0 0 .\nSFX S. 0 s .\n";
-    let dic = "7\nécole/S.\nmaison/S.\nle/S.\nchat/S.\ndort\net\nla\n";
+    let dic = "10\nécole/S.\nmaison/S.\nle/S.\nchat/S.\ndort\net\nla\ngrand\nchose\ngrand-chose\n";
     wordcraft_proof::fr::install_dictionary(aff, dic).unwrap();
 }
 
@@ -8552,6 +8552,90 @@ fn french_proofing_through_the_review_commands_normalized_context() {
             run(&mut session, "edit.undo", json!({}));
             assert_eq!(text(&session), source, "undo restores the exact decomposition");
         }
+    }
+}
+
+/// A two-word French locution uses the real review selection, replacement and undo path.
+#[test]
+fn french_proofing_through_the_review_commands_locution() {
+    french_test_dictionary();
+    for lang in ["fr-FR", "fr-CA"] {
+        for source in [
+            "Cette boîte ne contient pas grand chose.",
+            "Nous ne trouvons plus grand chose ici.",
+            "Elle ne raconte jamais grand chose.",
+            "Tu gardes pas grand chose pour demain.",
+            "Cela ne laisse pas grand chose de visible.",
+            "Après vérification, il ne reste pas grand chose.",
+            "🧭 Élodie ne distingue pas grand chose.",
+            "Élodie ne reçoit plus grand chose.",
+        ] {
+            let mut session = s();
+            run(&mut session, "document.setText", json!({"text": source}));
+            run(&mut session, "select.all", json!({}));
+            run(&mut session, "review.language", json!({"lang": lang}));
+            let issues = run(&mut session, "review.issues", json!({}));
+            let issue = issues
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|i| i["kind"] == "grammar" && i["suggestions"][0] == "grand-chose")
+                .unwrap_or_else(|| panic!("{lang} {source:?}: {issues}"));
+            let start = source.find("grand chose").unwrap();
+            assert_eq!(issue["text"], "grand chose");
+            assert_eq!(issue["start"]["off"], start);
+            assert_eq!(issue["end"]["off"], start + "grand chose".len());
+            assert_eq!(text(&session), source, "checking preserves original NFD and UTF8");
+            let mut expected = source.to_string();
+            expected.replace_range(start..start + "grand chose".len(), "grand-chose");
+            for reversed in [false, true] {
+                let (anchor, focus) = if reversed { (&issue["end"], &issue["start"]) } else { (&issue["start"], &issue["end"]) };
+                run(&mut session, "select.range", json!({"anchor": anchor, "focus": focus}));
+                run(&mut session, "review.applySuggestion", json!({"text": "grand-chose"}));
+                assert_eq!(text(&session), expected, "{lang} reversed={reversed}: exact pair replacement");
+                let after = run(&mut session, "review.issues", json!({}));
+                assert!(after.as_array().unwrap().iter().all(|i| i["kind"] != "grammar" || i["suggestions"][0] != "grand-chose"), "{after}");
+                run(&mut session, "edit.undo", json!({}));
+                assert_eq!(text(&session), source, "undo restores every original byte");
+            }
+        }
+    }
+}
+
+/// Formatting boundaries may merge, but no used context can cross a language boundary.
+#[test]
+fn french_proofing_through_the_review_commands_locution_language_context() {
+    french_test_dictionary();
+    let source = "Il ne garde pas grand chose.";
+    let marker = source.find("pas").unwrap();
+    let grand = source.find("grand").unwrap();
+    let chose = source.find("chose").unwrap();
+    for lang in ["fr-FR", "fr-CA"] {
+        for other in ["en-US", if lang == "fr-FR" { "fr-CA" } else { "fr-FR" }] {
+            for cut in [marker + 1, grand, chose] {
+                for (left, right) in [(lang, other), (other, lang)] {
+                    let mut session = s();
+                    run(&mut session, "document.setText", json!({"text": source}));
+                    run(&mut session, "select.all", json!({}));
+                    run(&mut session, "review.language", json!({"lang": left}));
+                    run(&mut session, "select.range", json!({"anchor": {"block": 0, "off": cut}, "focus": {"block": 0, "off": source.len()}}));
+                    run(&mut session, "review.language", json!({"lang": right}));
+                    let issues = run(&mut session, "review.issues", json!({}));
+                    assert!(
+                        issues.as_array().unwrap().iter().all(|i| i["kind"] != "grammar" || i["suggestions"][0] != "grand-chose"),
+                        "{left} → {right} at {cut}: {issues}"
+                    );
+                    assert_eq!(text(&session), source);
+                }
+            }
+        }
+        // A language change before pas is outside the context consulted by this rule.
+        let mut session = s();
+        run(&mut session, "document.setText", json!({"text": source}));
+        run(&mut session, "select.range", json!({"anchor": {"block": 0, "off": marker}, "focus": {"block": 0, "off": source.len()}}));
+        run(&mut session, "review.language", json!({"lang": lang}));
+        let issues = run(&mut session, "review.issues", json!({}));
+        assert!(issues.as_array().unwrap().iter().any(|i| i["kind"] == "grammar" && i["suggestions"][0] == "grand-chose"), "{issues}");
     }
 }
 
