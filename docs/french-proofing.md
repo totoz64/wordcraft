@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-26 · **Change:** minor (French uppercase/number proofing options and review-record corrections); previously minor (integration with current main, shared NFC lookup and external interface catalogs); previously minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-26 · **Change:** minor (bounded contextual suggestions under benchmark validation); previously minor (French uppercase/number proofing options and review-record corrections); previously minor (integration with current main, shared NFC lookup and external interface catalogs); previously minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660)
 
 ## Shared-engine compatibility and reproducible CI
 
@@ -35,8 +35,17 @@ Document proofing reads the Canadian region only in its region position, after a
 script (`fr-CA`, `fr-Latn-CA`). Extension data such as `fr-u-ca-gregory` and `fr-x-ca`
 does not select Quebec typography.
 
-Subject–verb agreement, gender/number agreement, past participles, conjugation and contextual
-homophones are not checked. No automatic document-wide correction is applied.
+General subject–verb agreement, gender/number agreement and conjugation remain outside this baseline.
+A separately evaluated follow-up recognizes a short list of paragraph-initial subject/avoir/first-group
+infinitive forms, a/à in a few initial avoir expressions, and là où. It preserves the original token
+ranges and offers suggestions only; no automatic document-wide correction is applied.
+
+These new rules are intentionally narrow: no intervening object or relative clause, no punctuation
+or line break between matched words, no arbitrary -er word stemming, and no full participle-agreement
+claim. Correct and ambiguous counterexamples are required, including hier, cher, personal names,
+relative clauses, avoir à manger, and correct infinitives. A valid article ou/où is not elided;
+la où is offered as là où, preserving case. The full comparative corpus remains silver data and
+must not be treated as certified grammar truth. See the [isolated observation protocol](https://github.com/totoz64/wordcraft/blob/694a8e76079453de3fa68321d3ce11f49dcf9f39/docs/proofing-comparison.md).
 
 ## Reproduce the checks
 
@@ -89,6 +98,8 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-26 | minor | Contextual à/où and selected avoir/participle rules compare NFC lexical copies while preserving original NFD issue ranges; regression coverage includes both French regions, replacement and undo |
+| 2026-10-26 | minor | Isolated benchmark follow-up: fix invalid article elision before ou/où, suggest là où and selected paragraph-initial avoir forms; regressions and comparative revalidation required |
 | 2026-10-26 | minor | French dispatch honours the uppercase and number ignore options; regressions cover both regions, independent choices and original UTF-8 issue ranges; progress records aligned with the current integration |
 | 2026-10-25 | minor | Integration with current main preserves shared NFC lookup, other proofing languages, dictionary diagnostics and external interface catalogs |
 | 2026-10-20 | minor | Attached Unicode marks keep their original spelling ranges; French compound fallback rejects empty internal components while preserving explicit dictionary entries |
@@ -127,3 +138,19 @@ Process-isolated synthetic regressions cover original byte ranges, both French
 regions, orphan marks, another dictionary-backed language and explicit user
 entries. The existing required real French dictionary gate covers both forms of
 accented words and malformed versus valid compounds with pinned Dicollecte data.
+
+## Canonically equivalent contextual input
+
+The existing narrow contextual rules (`Il à faim`, `la où`, and the listed
+paragraph-initial avoir/infinitive expressions) compare NFC copies of the relevant
+words. Their conditions and vocabulary are unchanged. Decomposed accents therefore
+get the same contextual suggestion; issue offsets still select the original UTF-8
+token, and the replacement uses the usual composed French spelling. Checking does
+not normalize document content. Regressions exercise both regions, byte offsets
+after multi-byte prefixes, preservation of unrelated combining marks, correction
+and undo. This scope does not change the shared tokenizer, other French grammar
+rules, or general replacement boundary handling.
+
+Local `cargo xtask ci` was attempted for this change but Cargo is unavailable on
+the Windows editing host. Hosted French and full-CI results must be checked on the
+published commit; this note does not claim those runs have passed.

@@ -8515,6 +8515,46 @@ fn french_proofing_through_the_review_commands() {
     assert!(left.as_array().unwrap().is_empty(), "{left}");
 }
 
+/// Contextual corrections compare NFC words but select and replace the originally typed bytes.
+#[test]
+fn french_proofing_through_the_review_commands_normalized_context() {
+    french_test_dictionary();
+    for lang in ["fr-FR", "fr-CA"] {
+        for (source, old, replacement) in [
+            ("\u{A0}\u{202F}Il à faim.", "à", "a"),
+            ("\u{A0}\u{202F}Il a\u{300} faim.", "a\u{300}", "a"),
+            ("\u{A0}\u{202F}Elle a préparer le repas.", "préparer", "préparé"),
+            ("\u{A0}\u{202F}Elle a pre\u{301}parer le repas.", "pre\u{301}parer", "préparé"),
+            ("😀 Café\u{301} : la où il habite.", "la", "là"),
+            ("😀 Cafe\u{301}\u{301} : la ou\u{300} il habite.", "la", "là"),
+        ] {
+            let mut session = s();
+            run(&mut session, "document.setText", json!({"text": source}));
+            run(&mut session, "select.all", json!({}));
+            run(&mut session, "review.language", json!({"lang": lang}));
+            let issues = run(&mut session, "review.issues", json!({}));
+            let issue = issues
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|i| i["kind"] == "grammar" && i["suggestions"][0] == replacement)
+                .unwrap_or_else(|| panic!("{lang} {source:?}: {issues}"));
+            let start = source.find(old).unwrap();
+            assert_eq!(issue["text"], old);
+            assert_eq!(issue["start"]["off"], start);
+            assert_eq!(issue["end"]["off"], start + old.len());
+            assert_eq!(text(&session), source, "checking preserves all original bytes");
+            run(&mut session, "select.range", json!({"anchor": issue["start"], "focus": issue["end"]}));
+            run(&mut session, "review.applySuggestion", json!({"text": replacement}));
+            let mut expected = source.to_string();
+            expected.replace_range(start..start + old.len(), replacement);
+            assert_eq!(text(&session), expected, "the entire decomposed token is replaced");
+            run(&mut session, "edit.undo", json!({}));
+            assert_eq!(text(&session), source, "undo restores the exact decomposition");
+        }
+    }
+}
+
 #[test]
 fn polish_proofing_through_the_review_commands() {
     polish_test_dictionary();
