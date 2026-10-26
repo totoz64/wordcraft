@@ -1,0 +1,327 @@
+[
+  {
+    "id": "S01",
+    "text": "Le chien aboie.",
+    "expectation": {
+      "state": "relation_minimale_identifiee",
+      "subject": {
+        "kind": "groupe_nominal",
+        "span": {
+          "text": "Le chien",
+          "start_utf8": 0,
+          "end_utf8": 8
+        },
+        "head": {
+          "text": "chien",
+          "start_utf8": 3,
+          "end_utf8": 8
+        },
+        "person": 3,
+        "number": "singulier"
+      },
+      "verb": {
+        "span": {
+          "text": "aboie",
+          "start_utf8": 9,
+          "end_utf8": 14
+        },
+        "lemma": "aboyer"
+      },
+      "note": "Cadre scolaire minimal déterminant + nom + verbe."
+    }
+  },
+  {
+    "id": "S02",
+    "text": "Le chien des voisins aboie.",
+    "expectation": {
+      "state": "relation_minimale_identifiee",
+      "subject": {
+        "kind": "groupe_nominal",
+        "span": {
+          "text": "Le chien des voisins",
+          "start_utf8": 0,
+          "end_utf8": 20
+        },
+        "head": {
+          "text": "chien",
+          "start_utf8": 3,
+          "end_utf8": 8
+        },
+        "person": 3,
+        "number": "singulier"
+      },
+      "verb": {
+        "span": {
+          "text": "aboie",
+          "start_utf8": 21,
+          "end_utf8": 26
+        },
+        "lemma": "aboyer"
+      },
+      "noun_complements": [
+        {
+          "span": {
+            "text": "des voisins",
+            "start_utf8": 9,
+            "end_utf8": 20
+          },
+          "head": {
+            "text": "voisins",
+            "start_utf8": 13,
+            "end_utf8": 20
+          },
+          "attaches_to": "chien",
+          "relation": "complement_du_nom"
+        }
+      ],
+      "note": "Voisins appartient au complément du nom ; il ne devient ni tête du sujet ni sujet pluriel du verbe."
+    }
+  },
+  {
+    "id": "S03",
+    "text": "Les chiens aboie.",
+    "expectation": {
+      "state": "relation_minimale_identifiee",
+      "subject": {
+        "kind": "groupe_nominal",
+        "span": {
+          "text": "Les chiens",
+          "start_utf8": 0,
+          "end_utf8": 10
+        },
+        "head": {
+          "text": "chiens",
+          "start_utf8": 4,
+          "end_utf8": 10
+        },
+        "person": 3,
+        "number": "pluriel"
+      },
+      "verb": {
+        "span": {
+          "text": "aboie",
+          "start_utf8": 11,
+          "end_utf8": 16
+        },
+        "lemma": "aboyer"
+      },
+      "agreement_is_deliberately_wrong": true,
+      "note": "La relation syntaxique demeure identifiable ; un accord faux ne doit pas annuler le cadre ni imposer une correction."
+    }
+  },
+  {
+    "id": "S04",
+    "text": "Il aboient.",
+    "expectation": {
+      "state": "relation_minimale_identifiee",
+      "subject": {
+        "kind": "pronom_sujet",
+        "span": {
+          "text": "Il",
+          "start_utf8": 0,
+          "end_utf8": 2
+        },
+        "head": {
+          "text": "Il",
+          "start_utf8": 0,
+          "end_utf8": 2
+        },
+        "person": 3,
+        "number": "singulier"
+      },
+      "verb": {
+        "span": {
+          "text": "aboient",
+          "start_utf8": 3,
+          "end_utf8": 10
+        },
+        "lemma": "aboyer"
+      },
+      "agreement_is_deliberately_wrong": true,
+      "note": "Ne pas décider si le pronom ou le verbe était voulu. Aucun remplacement attendu."
+    }
+  },
+  {
+    "id": "S05",
+    "text": "La porte parle.",
+    "expectation": {
+      "state": "relation_minimale_identifiee",
+      "subject": {
+        "kind": "groupe_nominal",
+        "span": {
+          "text": "La porte",
+          "start_utf8": 0,
+          "end_utf8": 8
+        },
+        "head": {
+          "text": "porte",
+          "start_utf8": 3,
+          "end_utf8": 8
+        },
+        "person": 3,
+        "number": "singulier"
+      },
+      "verb": {
+        "span": {
+          "text": "parle",
+          "start_utf8": 9,
+          "end_utf8": 14
+        },
+        "lemma": "parler"
+      },
+      "lexical_ambiguity_to_preserve": [
+        {
+          "surface": "porte",
+          "readings": [
+            "nom feminin singulier",
+            "verbe porter"
+          ]
+        }
+      ],
+      "note": "Le déterminant permet la lecture nominale de la tête dans ce cadre ; les lectures lexicales alternatives ne sont pas supprimées du lexique."
+    }
+  },
+  {
+    "id": "S06",
+    "text": "Tu portes les livres.",
+    "expectation": {
+      "state": "relation_minimale_identifiee",
+      "subject": {
+        "kind": "pronom_sujet",
+        "span": {
+          "text": "Tu",
+          "start_utf8": 0,
+          "end_utf8": 2
+        },
+        "head": {
+          "text": "Tu",
+          "start_utf8": 0,
+          "end_utf8": 2
+        },
+        "person": 2,
+        "number": "singulier"
+      },
+      "verb": {
+        "span": {
+          "text": "portes",
+          "start_utf8": 3,
+          "end_utf8": 9
+        },
+        "lemma": "porter"
+      },
+      "lexical_ambiguity_to_preserve": [
+        {
+          "surface": "portes",
+          "readings": [
+            "nom feminin pluriel",
+            "verbe porter"
+          ]
+        }
+      ],
+      "note": "Le rôle verbal du cadre ne doit pas faire disparaître les lectures nominales du résultat lexical. Aucun objet ni intention à déduire dans ce test minimal."
+    }
+  },
+  {
+    "id": "S07",
+    "text": "Les enfants jouent.",
+    "expectation": {
+      "state": "relation_minimale_identifiee",
+      "subject": {
+        "kind": "groupe_nominal",
+        "span": {
+          "text": "Les enfants",
+          "start_utf8": 0,
+          "end_utf8": 11
+        },
+        "head": {
+          "text": "enfants",
+          "start_utf8": 4,
+          "end_utf8": 11
+        },
+        "person": 3,
+        "number": "pluriel",
+        "gender_readings": [
+          "masculin",
+          "feminin"
+        ]
+      },
+      "verb": {
+        "span": {
+          "text": "jouent",
+          "start_utf8": 12,
+          "end_utf8": 18
+        },
+        "lemma": "jouer"
+      },
+      "gender_readings": [
+        "masculin",
+        "feminin"
+      ],
+      "note": "Même sujet et même nombre avec plusieurs lectures de genre ; ne pas choisir un genre par défaut."
+    }
+  },
+  {
+    "id": "S08",
+    "text": "Le chien que tu portes aboie.",
+    "expectation": {
+      "state": "abstention_relation_principale",
+      "reason": "relative_hors_portee",
+      "forbidden_shortcuts": [
+        "Le chien ne doit pas être attaché au verbe enchâssé portes.",
+        "Tu portes ne doit pas devenir artificiellement la proposition principale."
+      ],
+      "note": "Les lectures lexicales peuvent rester disponibles ; aucune analyse complète de relative n’est demandée."
+    }
+  },
+  {
+    "id": "S09",
+    "text": "Parle.",
+    "expectation": {
+      "state": "abstention_relation_principale",
+      "reason": "imperatif_possible_sans_sujet_exprime",
+      "forbidden_shortcuts": [
+        "Ne pas inventer le sujet tu.",
+        "Ne pas choisir indicatif plutôt qu’impératif sur cette seule surface."
+      ]
+    }
+  },
+  {
+    "id": "S10",
+    "text": "Le chien et le chat mangent.",
+    "expectation": {
+      "state": "abstention_relation_principale",
+      "reason": "coordination_du_sujet_hors_portee",
+      "forbidden_shortcuts": [
+        "Ne pas traiter le chat seul comme sujet.",
+        "Ne pas choisir le chien seul en ignorant et le chat."
+      ]
+    }
+  },
+  {
+    "id": "S11",
+    "text": "Le zorbule aboie.",
+    "expectation": {
+      "state": "abstention_relation_principale",
+      "reason": "tete_nominale_inconnue",
+      "unknown_forms": [
+        "zorbule"
+      ],
+      "forbidden_shortcuts": [
+        "Ne pas inventer une nature ou un lemme à partir de la terminaison ou du déterminant."
+      ]
+    }
+  },
+  {
+    "id": "S12",
+    "text": "Nous parle le voisin.",
+    "expectation": {
+      "state": "abstention_relation_principale",
+      "reason": "nous_objet_possible_et_sujet_inverse_hors_portee",
+      "forbidden_shortcuts": [
+        "Ne pas considérer nous comme sujet certain uniquement parce qu’il précède un verbe.",
+        "Ne pas décider une correction ou l’intention de la phrase."
+      ],
+      "note": "Cas de portée/ambiguïté ; il ne constitue pas un témoin certifié de français courant."
+    }
+  }
+]

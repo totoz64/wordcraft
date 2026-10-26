@@ -1,11 +1,15 @@
-use french_school_foundations::{MAX_BYTES, analyze};
+use french_school_foundations::{MAX_BYTES, analyze, analyze_sentence};
 use std::io::{Read, Write};
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
-    let text = match args.next().as_deref() {
+    let first = args.next();
+    let (with_syntax, operation) = if first.as_deref() == Some("--syntax") { (true, args.next()) } else { (false, first) };
+    let text = match operation.as_deref() {
         Some("--help") => {
-            println!("french-school-foundations --text <phrase> | --stdin\nAnalyse lexicale limitée, sans correction ni analyse du contexte.");
+            println!(
+                "french-school-foundations [--syntax] --text <phrase> | --stdin\nLectures lexicales ; --syntax ajoute des hypothèses sujet–verbe bornées.\nAucune correction ni interprétation du sens."
+            );
             return Ok(());
         }
         Some("--text") => {
@@ -23,12 +27,15 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             std::io::stdin().take((MAX_BYTES + 1) as u64).read_to_string(&mut value)?;
             value
         }
-        _ => return Err("utiliser --text <phrase> ou --stdin ; --help pour l’aide".into()),
+        _ => return Err("utiliser [--syntax] --text <phrase> ou --stdin ; --help pour l’aide".into()),
     };
-    let analysis = analyze(&text)?;
     let stdout = std::io::stdout();
     let mut output = stdout.lock();
-    serde_json::to_writer_pretty(&mut output, &analysis)?;
+    if with_syntax {
+        serde_json::to_writer_pretty(&mut output, &analyze_sentence(&text)?)?;
+    } else {
+        serde_json::to_writer_pretty(&mut output, &analyze(&text)?)?;
+    }
     writeln!(output)?;
     Ok(())
 }

@@ -1,4 +1,6 @@
-//! Original, bounded teaching lexicon. No syntax, diagnosis or corrections.
+//! Original teaching lexicon with opt-in bounded structural hypotheses. No corrections.
+pub mod syntax;
+
 use serde::Serialize;
 use std::collections::BTreeMap;
 use unicode_general_category::{GeneralCategory, get_general_category};
@@ -371,4 +373,17 @@ pub fn analyze(text: &str) -> Result<Analysis, AnalysisError> {
             "Texte original conservé ; NFC et minuscules servent uniquement à la recherche.",
         ],
     })
+}
+
+/// Opt-in structural layer; the original lexical readings are preserved verbatim.
+#[derive(Debug, Serialize)]
+pub struct SentenceAnalysis {
+    pub analyse_lexicale: Analysis,
+    pub analyse_syntaxique: syntax::SyntaxAnalysis,
+}
+
+pub fn analyze_sentence(text: &str) -> Result<SentenceAnalysis, AnalysisError> {
+    let analyse_lexicale = analyze(text)?;
+    let analyse_syntaxique = syntax::inspect(&analyse_lexicale.tokens);
+    Ok(SentenceAnalysis { analyse_lexicale, analyse_syntaxique })
 }
