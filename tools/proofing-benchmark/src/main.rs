@@ -34,13 +34,7 @@ fn observe(case: &Case) -> Result<Value, Box<dyn Error>> {
         return Ok(json!({"id":case.id,"language":case.language,"status":"excluded_custom_dictionary","range_unit":"utf16"}));
     }
     let lang = language(&case.language)?;
-    let issues = wordcraft_proof::check_text_with(
-        &case.input,
-        &[(0..case.input.len(), lang)],
-        &Options::default(),
-        true,
-        false,
-    );
+    let issues = wordcraft_proof::check_text_with(&case.input, &[(0..case.input.len(), lang)], &Options::default(), true, false);
     let mut spelling = Vec::new();
     let mut grammar = Vec::new();
     for issue in issues {
@@ -61,7 +55,9 @@ fn observe(case: &Case) -> Result<Value, Box<dyn Error>> {
             IssueKind::Grammar => grammar.push(item),
         }
     }
-    Ok(json!({"id":case.id,"language":case.language,"status":"ok","range_unit":"utf16","spelling":spelling,"grammar":grammar,"duration_ms":started.elapsed().as_secs_f64()*1000.0}))
+    Ok(
+        json!({"id":case.id,"language":case.language,"status":"ok","range_unit":"utf16","spelling":spelling,"grammar":grammar,"duration_ms":started.elapsed().as_secs_f64()*1000.0}),
+    )
 }
 
 /// Run a bounded, deterministic shard without changing the dictionary or applying edits.
