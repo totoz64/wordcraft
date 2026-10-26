@@ -1493,7 +1493,7 @@ pub(crate) mod tests {
         let back = AffixDict::from_bytes(&unicode.to_bytes()).unwrap();
         for d in [&unicode, &back] {
             assert!(d.contains("éroots") && d.contains("roots"));
-            assert!(!d.contains("êroots") && !d.contains("e\\u{301}roots"));
+            assert!(!d.contains("êroots") && !d.contains("e\u{301}roots"));
         }
     }
 
