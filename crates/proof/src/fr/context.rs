@@ -390,10 +390,7 @@ mod tests {
             for other in [ProofLang::En, if lang == ProofLang::Fr { ProofLang::FrCa } else { ProofLang::Fr }] {
                 for cut in [marker + 1, grand, chose] {
                     for (left, right) in [(lang, other), (other, lang)] {
-                        assert!(
-                            !has_locution(crate::check_text(text, &[(0..cut, left), (cut..text.len(), right)])),
-                            "{left:?} → {right:?} at {cut}"
-                        );
+                        assert!(!has_locution(crate::check_text(text, &[(0..cut, left), (cut..text.len(), right)])), "{left:?} → {right:?} at {cut}");
                     }
                 }
             }
