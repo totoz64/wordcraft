@@ -98,6 +98,7 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-26 | minor | Contextual à/où and selected avoir/participle rules compare NFC lexical copies while preserving original NFD issue ranges; regression coverage includes both French regions, replacement and undo |
 | 2026-10-26 | minor | Isolated benchmark follow-up: fix invalid article elision before ou/où, suggest là où and selected paragraph-initial avoir forms; regressions and comparative revalidation required |
 | 2026-10-26 | minor | French dispatch honours the uppercase and number ignore options; regressions cover both regions, independent choices and original UTF-8 issue ranges; progress records aligned with the current integration |
 | 2026-10-25 | minor | Integration with current main preserves shared NFC lookup, other proofing languages, dictionary diagnostics and external interface catalogs |
@@ -137,3 +138,19 @@ Process-isolated synthetic regressions cover original byte ranges, both French
 regions, orphan marks, another dictionary-backed language and explicit user
 entries. The existing required real French dictionary gate covers both forms of
 accented words and malformed versus valid compounds with pinned Dicollecte data.
+
+## Canonically equivalent contextual input
+
+The existing narrow contextual rules (`Il à faim`, `la où`, and the listed
+paragraph-initial avoir/infinitive expressions) compare NFC copies of the relevant
+words. Their conditions and vocabulary are unchanged. Decomposed accents therefore
+get the same contextual suggestion; issue offsets still select the original UTF-8
+token, and the replacement uses the usual composed French spelling. Checking does
+not normalize document content. Regressions exercise both regions, byte offsets
+after multi-byte prefixes, preservation of unrelated combining marks, correction
+and undo. This scope does not change the shared tokenizer, other French grammar
+rules, or general replacement boundary handling.
+
+Local `cargo xtask ci` was attempted for this change but Cargo is unavailable on
+the Windows editing host. Hosted French and full-CI results must be checked on the
+published commit; this note does not claim those runs have passed.

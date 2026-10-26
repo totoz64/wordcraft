@@ -1,4 +1,5 @@
 //! Small French context rules, intentionally narrower than a general grammar parser.
+//! Compare composed lexical copies; retain the original token bounds and document bytes.
 use crate::{Issue, IssueKind, ProofLang};
 
 /// Common first-group verbs; avoid deriving verbs from arbitrary words such as hier or cher.
@@ -68,7 +69,8 @@ fn initial_past(text: &str, ws: &[(usize, usize)], v: &mut Vec<Issue>) {
     };
     let Some((start, end)) = next else { return };
     let Some(word) = text.get(start..end) else { return };
-    if let Some((_, past)) = PAST_FORMS.iter().find(|(infinitive, _)| *infinitive == word) {
+    let word = crate::composed(word);
+    if let Some((_, past)) = PAST_FORMS.iter().find(|(infinitive, _)| *infinitive == word.as_ref()) {
         suggest(v, start, end, "Participe passé attendu après l’auxiliaire avoir", past);
     }
 }
@@ -78,6 +80,7 @@ pub(super) fn check(text: &str, ws: &[(usize, usize)], v: &mut Vec<Issue>) {
     for pair in ws.windows(2) {
         let [(a0, b0), (a1, b1)] = pair else { continue };
         let (Some(left), Some(right)) = (text.get(*a0..*b0), text.get(*a1..*b1)) else { continue };
+        let right = crate::composed(right);
         if matches!(left, "la" | "La") && right == "où" && joined(text, *b0, *a1) {
             suggest(v, *a0, *b0, "L’adverbe de lieu là est attendu devant où", if left == "La" { "Là" } else { "là" });
         }
@@ -87,10 +90,12 @@ pub(super) fn check(text: &str, ws: &[(usize, usize)], v: &mut Vec<Issue>) {
         let (a1, b1) = *accent;
         let (a2, b2) = *noun;
         let (Some(subject), Some(mark), Some(word)) = (text.get(a0..b0), text.get(a1..b1), text.get(a2..b2)) else { return };
+        let mark = crate::composed(mark);
+        let word = crate::composed(word);
         if text.get(..a0).is_some_and(|prefix| prefix.trim().is_empty())
             && matches!(subject.to_lowercase().as_str(), "il" | "elle" | "on")
             && mark == "à"
-            && matches!(word, "faim" | "soif" | "besoin" | "envie" | "peur" | "raison" | "tort" | "hâte")
+            && matches!(word.as_ref(), "faim" | "soif" | "besoin" | "envie" | "peur" | "raison" | "tort" | "hâte")
             && joined(text, b0, a1)
             && joined(text, b1, a2)
         {
@@ -166,6 +171,65 @@ mod tests {
             let mut own = Vec::new();
             check(text, &crate::words(text), &mut own);
             assert!(own.is_empty(), "{text}: {own:?}");
+        }
+    }
+
+    #[test]
+    fn french_contextual_rules_match_nfc_and_nfd_at_original_bytes() {
+        use unicode_normalization::UnicodeNormalization;
+
+        for lang in [ProofLang::Fr, ProofLang::FrCa] {
+            for (source, old, replacement) in [
+                ("\u{A0}\u{202F}Il à faim.", "à", "a"),
+                ("\u{A0}\u{202F}Elle à hâte.", "à", "a"),
+                ("\u{A0}\u{202F}Elle a préparer le repas.", "préparer", "préparé"),
+                ("\u{A0}\u{202F}J’ai écouter le concert.", "écouter", "écouté"),
+                ("😀 Café\u{301} : la où il habite.", "la", "là"),
+            ] {
+                for decomposed in [false, true] {
+                    let text = if decomposed { source.nfd().collect::<String>() } else { source.into() };
+                    let old = if decomposed { old.nfd().collect::<String>() } else { old.into() };
+                    let before = text.clone();
+                    let issues = super::super::grammar::check_in(&text, lang);
+                    assert_eq!(issues.len(), 1, "{lang:?} {text:?}: {issues:?}");
+                    let issue = &issues[0];
+                    let start = text.find(&old).unwrap();
+                    assert_eq!((issue.start, issue.end), (start, start + old.len()), "{text:?}");
+                    assert_eq!(issue.lang, lang);
+                    assert_eq!(issue.suggestions, [replacement.to_string()]);
+                    assert_eq!(text, before, "lookup does not rewrite the source");
+                    let mut fixed = text.clone();
+                    fixed.replace_range(issue.start..issue.end, replacement);
+                    assert_eq!(&fixed[..start], &text[..start], "preserve the original prefix");
+                    assert_eq!(&fixed[start + replacement.len()..], &text[start + old.len()..], "preserve the original suffix");
+                    assert!(super::super::grammar::check_in(&fixed, lang).is_empty(), "{fixed:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn french_contextual_normalization_preserves_quiet_cases_and_marks() {
+        use unicode_normalization::UnicodeNormalization;
+
+        for source in [
+            "Il a faim.",
+            "Elle a hâte.",
+            "Elle a préparé le repas.",
+            "J’ai écouté le concert.",
+            "Les livres sont là où il reste de la place.",
+            "Il arrive à pied.",
+            "Il veut préparer le repas.",
+            "Nous les avons préparer.",
+            "Il à\u{301} faim.",
+            "Elle a préparer\u{301} le repas.",
+            "La où\u{301} il habite.",
+        ] {
+            for text in [source.to_string(), source.nfd().collect()] {
+                let mut own = Vec::new();
+                check(&text, &crate::words(&text), &mut own);
+                assert!(own.is_empty(), "{text:?}: {own:?}");
+            }
         }
     }
 
