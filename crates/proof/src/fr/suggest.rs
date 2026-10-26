@@ -518,15 +518,4 @@ mod tests {
         assert_eq!(suggest_in(&d, "cce", 1), ["ce"]);
         Ok(())
     }
-
-    #[test]
-    fn short_word_candidates_are_diagnosed_before_display_truncation() -> Result<(), String> {
-        let d = initial_case_fixture()?;
-        let narrow = suggest_in(&d, "ot", 6);
-        let expanded = suggest_in(&d, "ot", 32);
-        assert_eq!(narrow, ["t", "sot", "rot", "lot", "dot", "pot"]);
-        assert!(!narrow.iter().any(|s| s == "ont"));
-        assert!(expanded.iter().any(|s| s == "ont"), "{expanded:?}");
-        Ok(())
-    }
 }

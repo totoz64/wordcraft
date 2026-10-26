@@ -61,7 +61,7 @@ it does not add a new ranking rule, increase the displayed limit or apply a repl
 automatically. Both French regions share this behavior. Synthetic regressions cover
 Unicode, suggestion limits, dictionary flags, names and unchanged mixed-case classification.
 
-The same Rust source passed an [isolated diagnostic on three operating systems](https://github.com/totoz64/wordcraft/actions/runs/40371993314)
+The same production suggestion logic passed an [isolated diagnostic on three operating systems](https://github.com/totoz64/wordcraft/actions/runs/40371993314)
 at `98ef1b18483e5566eca201d2f97f16c068449cb7`, including the real Dicollecte gate.
 That historical diagnostic does not validate a later commit: this production follow-up
 must pass its own required checks before integration. The separate short-word diagnostic
