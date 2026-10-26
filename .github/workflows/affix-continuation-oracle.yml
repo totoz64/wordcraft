@@ -1,0 +1,26 @@
+name: Affix continuation oracle
+
+on:
+  push:
+    branches: [bench/french-prefix-continuations]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  oracle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Install reference command-line executable
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends hunspell
+      - name: Observe original prefix/suffix continuation fixtures
+        run: python3 tools/affix-oracle/probe.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: affix-oracle-observations
+          path: affix-oracle-observations.json
