@@ -1,0 +1,9 @@
+{"id":"unit-centimetres","language":"fr-FR","input":"Il mesure cinq centimètres.","expected_text":"Il mesure cinq centimètres.","category":"units_correct_control"}
+{"id":"unit-grammes","language":"fr-FR","input":"Il pèse cent grammes.","expected_text":"Il pèse cent grammes.","category":"units_correct_control"}
+{"id":"unit-metre","language":"fr-FR","input":"Cette table mesure un mètre.","expected_text":"Cette table mesure un mètre.","category":"units_correct_control"}
+{"id":"unit-metres","language":"fr-FR","input":"Le câble mesure deux mètres.","expected_text":"Le câble mesure deux mètres.","category":"units_correct_control"}
+{"id":"unit-kilogrammes","language":"fr-FR","input":"Le sac pèse trois kilogrammes.","expected_text":"Le sac pèse trois kilogrammes.","category":"units_correct_control"}
+{"id":"unit-milligrammes","language":"fr-FR","input":"Il reste deux milligrammes.","expected_text":"Il reste deux milligrammes.","category":"units_correct_control"}
+{"id":"unit-kilometres","language":"fr-FR","input":"Il roule deux kilomètres.","expected_text":"Il roule deux kilomètres.","category":"units_correct_control"}
+{"id":"unit-nanometres","language":"fr-FR","input":"Le test porte sur cinq nanomètres.","expected_text":"Le test porte sur cinq nanomètres.","category":"units_correct_control"}
+{"id":"unit-secondes","language":"fr-FR","input":"Le test dure trois secondes.","expected_text":"Le test dure trois secondes.","category":"units_correct_control"}
