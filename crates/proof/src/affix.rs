@@ -314,6 +314,8 @@ struct SfxGroup {
 struct PrefixGrantGroup {
     flags: FlagSet,
     needs_affix: bool,
+    /// Empty prefixes are always candidates; others need the same initial character.
+    initial: Option<char>,
     rules: Vec<u32>,
 }
 
@@ -735,7 +737,7 @@ impl AffixDict {
         self.sfx_index = idx;
         let suffix_flags = self.suffixes.iter().fold(FlagSet::default(), |flags, r| flags.union(r.bit));
         let mut grant_groups: Vec<PrefixGrantGroup> = Vec::new();
-        let mut grant_group_of: HashMap<(FlagSet, bool), usize> = HashMap::new();
+        let mut grant_group_of: HashMap<(FlagSet, bool, Option<char>), usize> = HashMap::new();
         let mut grant_flags = FlagSet::default();
         for (i, r) in self.prefixes.iter().enumerate() {
             if !r.cross {
@@ -747,12 +749,13 @@ impl AffixDict {
             }
             let Ok(i) = u32::try_from(i) else { break };
             grant_flags = grant_flags.union(flags);
-            let key = (flags, r.needs_affix);
+            let initial = r.add.chars().next();
+            let key = (flags, r.needs_affix, initial);
             match grant_group_of.get(&key).and_then(|&g| grant_groups.get_mut(g)) {
                 Some(group) => group.rules.push(i),
                 None => {
                     grant_group_of.insert(key, grant_groups.len());
-                    grant_groups.push(PrefixGrantGroup { flags, needs_affix: r.needs_affix, rules: vec![i] });
+                    grant_groups.push(PrefixGrantGroup { flags, needs_affix: r.needs_affix, initial, rules: vec![i] });
                 }
             }
         }
@@ -982,14 +985,13 @@ impl AffixDict {
                     // Both affixes must permit a cross product. A suffix carrying NEEDAFFIX
                     // is valid here because the prefix supplies the additional affix.
                     if !g.grant_rules.is_empty() {
-                        let (ordinary, needing) = g
-                            .grant_rules
-                            .iter()
-                            .filter_map(|&i| self.suffixes.get(i as usize))
-                            .filter(|r| r.cond_matches(&root, true))
-                            .fold((FlagSet::default(), FlagSet::default()), |(ordinary, needing), r| {
-                                if r.needs_affix { (ordinary, needing.union(r.bit)) } else { (ordinary.union(r.bit), needing) }
-                            });
+                        let (ordinary, needing) =
+                            g.grant_rules.iter().filter_map(|&i| self.suffixes.get(i as usize)).filter(|r| r.cond_matches(&root, true)).fold(
+                                (FlagSet::default(), FlagSet::default()),
+                                |(ordinary, needing), r| {
+                                    if r.needs_affix { (ordinary, needing.union(r.bit)) } else { (ordinary.union(r.bit), needing) }
+                                },
+                            );
                         if self.prefix_grants(&root, ordinary, needing, reject) {
                             return true;
                         }
@@ -1023,7 +1025,11 @@ impl AffixDict {
             return false;
         }
         let mut root = String::with_capacity(w.len() + 8);
+        let initial = w.chars().next();
         for group in &self.prefix_grant_groups {
+            if group.initial.is_some() && group.initial != initial {
+                continue;
+            }
             // Two affixes that each require a further affix cannot satisfy each other.
             let allowed = if group.needs_affix { ordinary } else { all };
             if !group.flags.intersects(allowed) {
@@ -1478,11 +1484,17 @@ pub(crate) mod tests {
             assert!(!d.prefix_grant_flags.is_empty());
             let indexed_suffixes = d.sfx_index.values().flatten().map(|group| group.grant_rules.len()).sum::<usize>();
             assert_eq!(indexed_suffixes, 2, "each eligible suffix index is stored at most once");
-
         }
         let plain = AffixDict::from_hunspell("PFX P Y 1\nPFX P 0 pre .\nSFX S Y 1\nSFX S 0 s .\n", "1\nroot/PS\n", &[]).unwrap();
         assert!(plain.prefix_grant_flags.is_empty() && plain.prefix_grant_groups.is_empty());
         assert!(plain.contains("preroots"), "ordinary prefix/suffix products keep their original path");
+        let aff = "SET UTF-8\nPFX P Y 2\nPFX P 0 é/S .\nPFX P 0 0/S .\nSFX S Y 1\nSFX S 0 s .\n";
+        let unicode = AffixDict::from_hunspell(aff, "1\nroot/P\n", &[]).unwrap();
+        let back = AffixDict::from_bytes(&unicode.to_bytes()).unwrap();
+        for d in [&unicode, &back] {
+            assert!(d.contains("éroots") && d.contains("roots"));
+            assert!(!d.contains("êroots") && !d.contains("e\\u{301}roots"));
+        }
     }
 
     fn dict() -> AffixDict {

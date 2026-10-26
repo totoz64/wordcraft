@@ -30,7 +30,9 @@ four balanced pairs). Operation counts on eight original probes showed
 26,998,277 prefix-rule visits; 78,196 of 137,049 nonempty grant masks were disjoint.
 
 The experimental index stores the union of grantable suffix classes and groups
-cross prefixes by their granted suffix mask and NEEDAFFIX requirement. Each
+cross prefixes by their granted suffix mask, NEEDAFFIX requirement and first
+appended Unicode character. Zero prefixes remain candidates for every word.
+Each suffix group also indexes only its structurally eligible grant rules. Each
 relevant prefix index is stored once, including multi-class prefixes, so index
 storage grows linearly rather than once per possible flag. Impossible suffix
 classes are filtered before the new walk; lookups allocate no candidate lists.
