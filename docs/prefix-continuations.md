@@ -29,6 +29,10 @@ defines continuation classes and prefix/suffix cross permission.
 The dedicated workflow executes the installed Hunspell CLI against original
 synthetic fixtures; no Hunspell implementation source is read or copied.
 The initial oracle run 40369355677 used Hunspell 1.7.2 and observed 32 fixtures.
+An additional four partner-affix fixtures in run 40370987011 confirmed that a
+NEEDAFFIX suffix accepts an ordinary prefix, but two affixes both carrying
+NEEDAFFIX cannot satisfy each other. Recognition and generation preserve this
+distinction, including compact-format round trips.
 Both cross flags are required, including a zero prefix. Prefix NEEDAFFIX is
 satisfied by the suffix. FORBIDDENWORD written in a prefix continuation was
 ignored by that CLI observation; this change preserves existing directive scope

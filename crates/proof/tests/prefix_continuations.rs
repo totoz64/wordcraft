@@ -65,6 +65,26 @@ fn prefix_continuations_respect_unicode_strip_conditions_and_bounds() {
 }
 
 #[test]
+fn prefix_suffix_needaffix_partners_match_reference_cli() {
+    for pneeds in [false, true] {
+        for sneeds in [false, true] {
+            let pcont = if pneeds { "SN" } else { "S" };
+            let scont = if sneeds { "/N" } else { "" };
+            let aff = format!("SET UTF-8\nNEEDAFFIX N\nPFX P Y 1\nPFX P 0 pre/{pcont} .\nSFX S Y 1\nSFX S 0 s{scont} .\n");
+            let original = AffixDict::from_hunspell(&aff, "1\nroot/P\n", &[]).unwrap();
+            let compact = AffixDict::from_bytes(&original.to_bytes()).unwrap();
+            for d in [&original, &compact] {
+                assert_eq!(d.contains("preroots"), !(pneeds && sneeds), "{aff}");
+                assert_eq!(d.forms("root").contains(&"preroots".into()), !(pneeds && sneeds), "{aff}");
+                for word in d.forms("root") {
+                    assert!(d.contains(&word), "generated form rejected: {aff}: {word}");
+                }
+            }
+        }
+    }
+}
+
+#[test]
 #[ignore = "requires the checksum-pinned French dictionary in WORDCRAFT_DICTIONARIES"]
 fn real_french_metric_units_use_prefix_continuations() {
     let directory = std::env::var_os("WORDCRAFT_DICTIONARIES").expect("set WORDCRAFT_DICTIONARIES");
