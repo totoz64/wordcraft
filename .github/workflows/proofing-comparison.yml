@@ -1,0 +1,101 @@
+name: Proofing comparison observations
+
+on:
+  push:
+    branches: [bench/french-proofing-comparison]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: proofing-comparison-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      WORDCRAFT_DICTIONARIES: ${{ github.workspace }}/benchmark-data/dictionary
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: '1.98.1'
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          workspaces: tools/proofing-benchmark
+      - name: Check runner formatting
+        id: formatting
+        continue-on-error: true
+        run: cargo fmt --manifest-path tools/proofing-benchmark/Cargo.toml -- --check
+      - name: Compile and lint observation runner
+        run: |
+          cargo clippy --manifest-path tools/proofing-benchmark/Cargo.toml --all-targets -- -D warnings
+          cargo build --release --manifest-path tools/proofing-benchmark/Cargo.toml
+      - name: Download and verify external runtime inputs
+        run: python3 tools/proofing-benchmark/prepare_inputs.py
+      - name: Observe original pilot
+        run: |
+          mkdir -p results
+          rustc --version --verbose > results/rust-version.txt
+          tools/proofing-benchmark/target/release/wordcraft-proofing-benchmark tools/proofing-benchmark/targeted-originals.jsonl results/pilot.jsonl
+      - name: Save runner
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: proofing-benchmark-runner
+          path: tools/proofing-benchmark/target/release/wordcraft-proofing-benchmark
+          if-no-files-found: error
+      - name: Save formatted source for review
+        if: always()
+        run: |
+          mkdir -p results
+          rustfmt --edition 2024 --emit stdout tools/proofing-benchmark/src/main.rs > results/runner-formatted.rs
+      - name: Save pilot observations and provenance
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: proofing-pilot-results
+          path: |
+            results/
+            tools/proofing-benchmark/Cargo.lock
+            benchmark-data/input-provenance.json
+          if-no-files-found: error
+      - name: Require formatting success
+        if: steps.formatting.outcome != 'success'
+        run: exit 1
+
+  observations:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    env:
+      WORDCRAFT_DICTIONARIES: ${{ github.workspace }}/benchmark-data/dictionary
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: proofing-benchmark-runner
+          path: runner
+      - name: Download and verify external runtime inputs
+        run: python3 tools/proofing-benchmark/prepare_inputs.py
+      - name: Observe deterministic shard
+        run: |
+          mkdir -p results
+          chmod +x runner/wordcraft-proofing-benchmark
+          runner/wordcraft-proofing-benchmark benchmark-data/news-all.jsonl results/full-${{ matrix.shard }}.jsonl ${{ matrix.shard }} 8
+      - name: Save observations and input fingerprint
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: proofing-results-${{ matrix.shard }}
+          path: |
+            results/
+            benchmark-data/input-provenance.json
+          if-no-files-found: error
