@@ -1,0 +1,37 @@
+name: French prefix performance
+on:
+  push:
+    branches: [bench/french-prefix-performance]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  same-machine:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WORDCRAFT_DICTIONARIES: ${{ github.workspace }}/benchmark-data/dictionary
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Obtain checksum-pinned runtime dictionary and corpus
+        run: python3 tools/affix-performance/prepare_inputs.py
+      - name: Compare pinned release runners sequentially with balanced order
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/affix-performance/compare.py
+      - name: Save measurements, IDs, counters and provenance
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: french-prefix-performance
+          path: |
+            performance-results/performance-report.json
+            performance-results/measured-*.jsonl
+            performance-results/measured-*.jsonl.metadata.json
+            performance-results/warmup-*.jsonl
+            performance-results/warmup-*.jsonl.metadata.json
+            benchmark-data/input-provenance.json
+          if-no-files-found: error
