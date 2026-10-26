@@ -11,7 +11,10 @@
 //!   then the dictionary's `REP` confusions (`soeur` → `sœur`), a missing space, one-letter
 //!   typos, and a dictionary scan for anything further off.
 //! - **Grammar** ([`grammar`]): French typography and a few reliable rules, with French messages.
+//!   Small context checks cover là où and selected paragraph-initial avoir expressions; they
+//!   do not provide general agreement or conjugation analysis.
 
+mod context;
 pub mod grammar;
 mod suggest;
 #[cfg(test)]
