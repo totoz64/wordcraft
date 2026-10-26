@@ -199,6 +199,16 @@ pub fn suggest_in(d: &AffixDict, word: &str, max: usize) -> Vec<String> {
     if curly { out.into_iter().map(|s| s.replace('\'', "’")).collect() } else { out }
 }
 
+/// Preserve a literal one-letter repair of a doubled initial capital without changing mixed names.
+fn repeated_initial_repair<'a>(d: &AffixDict, word: &'a str) -> Option<&'a str> {
+    let mut chars = word.chars();
+    let (Some(first), Some(second)) = (chars.next(), chars.next()) else { return None };
+    if first != second || !first.is_uppercase() {
+        return None;
+    }
+    word.get(first.len_utf8()..).filter(|repaired| casing(repaired) == Casing::Initial && d.can_suggest(repaired))
+}
+
 fn suggest_plain(d: &AffixDict, word: &str, max: usize) -> Vec<String> {
     let word = word.trim();
     let n = word.chars().count();
@@ -294,11 +304,18 @@ fn suggest_plain(d: &AffixDict, word: &str, max: usize) -> Vec<String> {
     let diff_at = |text: &str| chars.iter().zip(text.chars()).position(|(a, b)| *a != b).unwrap_or(n);
     found.sort_by_key(|(text, (cost, seq))| (*cost, diff_at(text), *seq));
     let mut out: Vec<String> = Vec::new();
+    let initial_repair = repeated_initial_repair(d, word);
     for (text, _) in found {
-        let t = match case {
-            Casing::Initial => capitalize(&text),
-            Casing::Upper if n > 1 => text.to_uppercase(),
-            _ => text,
+        let t = if let Some(repaired) = initial_repair
+            && text == repaired.to_lowercase()
+        {
+            repaired.to_string()
+        } else {
+            match case {
+                Casing::Initial => capitalize(&text),
+                Casing::Upper if n > 1 => text.to_uppercase(),
+                _ => text,
+            }
         };
         if t != word && !out.contains(&t) {
             out.push(t);
@@ -462,5 +479,54 @@ mod tests {
         let s = suggest("bahh", 8);
         assert!(!s.iter().any(|x| x.eq_ignore_ascii_case("bah")), "{s:?}");
         has("chatt", "chat");
+    }
+    fn initial_case_fixture() -> Result<crate::affix::AffixDict, String> {
+        crate::affix::AffixDict::from_hunspell(
+            "SET UTF-8\nTRY esntiarulodcpmévqfgbh\nNOSUGGEST X\nFORBIDDENWORD F\nKEEPCASE K\n",
+            "15\nt\nsot\nrot\nlot\ndot\npot\nont\nce\nbonjour\ndemain\nécole\nsecret/X\nbanni/F\niPhone/K\nAlice/K\n",
+            &[],
+        )
+    }
+
+    #[test]
+    fn doubled_initial_capitals_keep_the_literal_repairs_case() -> Result<(), String> {
+        let d = initial_case_fixture()?;
+        for (word, expected) in [("CCe", "Ce"), ("BBonjour", "Bonjour"), ("DDemain", "Demain"), ("ÉÉcole", "École")] {
+            let suggestions = suggest_in(&d, word, 6);
+            assert_eq!(suggestions.first().map(String::as_str), Some(expected), "{word}: {suggestions:?}");
+            assert_eq!(suggestions.iter().filter(|s| s.eq_ignore_ascii_case(expected)).count(), 1, "{suggestions:?}");
+            assert_eq!(suggest_in(&d, word, 1), [expected]);
+            assert!(suggest_in(&d, word, 0).is_empty());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn initial_repairs_obey_dictionary_case_and_suggestion_flags() -> Result<(), String> {
+        let d = initial_case_fixture()?;
+        assert_eq!(repeated_initial_repair(&d, "AAlice"), Some("Alice"));
+        for word in ["SSecret", "BBanni", "IIphone", "IIPhone", "McDonald", "MMcDonald", "iPhone", "CcE", "CEE", "bonjour", "BB"] {
+            assert_eq!(repeated_initial_repair(&d, word), None, "{word}");
+        }
+        for word in ["SSecret", "BBanni", "IIphone"] {
+            let suggestions = suggest_in(&d, word, 32);
+            assert!(suggestions.iter().all(|s| !["Secret", "secret", "Banni", "banni", "Iphone"].contains(&s.as_str())), "{suggestions:?}");
+        }
+        assert_eq!(casing("McDonald"), Casing::Mixed);
+        assert_eq!(casing("iPhone"), Casing::Mixed);
+        assert_eq!(casing("CEE"), Casing::Upper);
+        assert_eq!(suggest_in(&d, "cce", 1), ["ce"]);
+        Ok(())
+    }
+
+    #[test]
+    fn short_word_candidates_are_diagnosed_before_display_truncation() -> Result<(), String> {
+        let d = initial_case_fixture()?;
+        let narrow = suggest_in(&d, "ot", 6);
+        let expanded = suggest_in(&d, "ot", 32);
+        assert_eq!(narrow, ["t", "sot", "rot", "lot", "dot", "pot"]);
+        assert!(!narrow.iter().any(|s| s == "ont"));
+        assert!(expanded.iter().any(|s| s == "ont"), "{expanded:?}");
+        Ok(())
     }
 }
