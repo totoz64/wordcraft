@@ -27,14 +27,8 @@ impl Person {
     }
 }
 
-const PERSONS: [Person; 6] = [
-    Person::FirstSingular,
-    Person::SecondSingular,
-    Person::ThirdSingular,
-    Person::FirstPlural,
-    Person::SecondPlural,
-    Person::ThirdPlural,
-];
+const PERSONS: [Person; 6] =
+    [Person::FirstSingular, Person::SecondSingular, Person::ThirdSingular, Person::FirstPlural, Person::SecondPlural, Person::ThirdPlural];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum Tense {
@@ -219,10 +213,8 @@ pub(super) fn has_past_participle_reading(word: &str) -> bool {
     static PARTICIPLES: OnceLock<BTreeSet<String>> = OnceLock::new();
     PARTICIPLES
         .get_or_init(|| {
-            let mut forms: BTreeSet<String> = ["été", "eu", "eue", "eus", "eues", "suivi", "suivie", "suivis", "suivies"]
-                .into_iter()
-                .map(str::to_string)
-                .collect();
+            let mut forms: BTreeSet<String> =
+                ["été", "eu", "eue", "eus", "eues", "suivi", "suivie", "suivis", "suivies"].into_iter().map(str::to_string).collect();
             for lemma in LEMMAS {
                 if let Some(stem) = lemma.strip_suffix("er") {
                     for ending in ["é", "ée", "és", "ées"] {

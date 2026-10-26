@@ -11238,7 +11238,6 @@ fn scale_font_sizes_reaches_char_table_and_cs_sizes_and_unset_default() {
     assert_eq!(grid.regions.get(&TablePart::Band2Horz).unwrap().chr.size, Some(10.0));
 }
 
-
 #[test]
 fn french_proofing_through_the_review_commands_subject_agreement() {
     french_test_dictionary();
@@ -11299,9 +11298,12 @@ fn french_proofing_through_the_review_commands_subject_context() {
                     run(&mut session, "select.range", json!({"anchor": {"block": 0, "off": cut}, "focus": {"block": 0, "off": source.len()}}));
                     run(&mut session, "review.language", json!({"lang": right}));
                     let issues = run(&mut session, "review.issues", json!({}));
-                    assert!(issues.as_array().unwrap().iter().all(|i| {
-                        i["kind"] != "grammar" || !i["message"].as_str().is_some_and(|message| message.starts_with("Le verbe doit s’accorder"))
-                    }), "{left} → {right} at {cut}: {issues}");
+                    assert!(
+                        issues.as_array().unwrap().iter().all(|i| {
+                            i["kind"] != "grammar" || !i["message"].as_str().is_some_and(|message| message.starts_with("Le verbe doit s’accorder"))
+                        }),
+                        "{left} → {right} at {cut}: {issues}"
+                    );
                     assert_eq!(text(&session), source);
                 }
             }
