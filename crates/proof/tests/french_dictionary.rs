@@ -57,6 +57,7 @@ fn real_french_dictionary_spelling_suggestions_and_dispatch() {
         assert!(!fr::is_correct(word), "invalid unit spelling: {word}");
     }
     check_combining_marks_and_compounds();
+    check_complete_elision_suggestions();
     assert!(wordcraft_proof::dictionary_load_error(ProofLang::Fr).is_none());
 }
 
@@ -106,4 +107,35 @@ fn check_combining_marks_and_compounds() {
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+fn check_complete_elision_suggestions() {
+    let bare = |text: &str| {
+        text.strip_suffix('\'').or_else(|| text.strip_suffix('’')).is_some_and(|head| {
+            ["l", "d", "j", "m", "t", "s", "n", "c", "qu", "jusqu", "lorsqu", "puisqu", "quoiqu", "presqu", "quelqu"]
+                .iter()
+                .any(|prefix| head.eq_ignore_ascii_case(prefix))
+        })
+    };
+    for (word, expected) in [("j'a", "j'ai"), ("J'a", "J'ai"), ("j’a", "j’ai"), ("J’a", "J’ai"), ("J'A", "J'AI"), ("J’A", "J’AI")] {
+        let strict = Options { ignore_uppercase: false, ..Options::default() };
+        assert!(!fr::is_correct_with_options(word, &strict), "the incomplete elision is still a spelling issue: {word}");
+        for lang in [ProofLang::Fr, ProofLang::FrCa] {
+            assert!(wordcraft_proof::suggest_in(word, 0, lang).is_empty());
+            for max in [1, 6, 12] {
+                let suggestions = wordcraft_proof::suggest_in(word, max, lang);
+                assert_eq!(suggestions.first().map(String::as_str), Some(expected), "{lang:?} {word}: {suggestions:?}");
+                assert!(suggestions.len() <= max);
+                assert!(suggestions.iter().all(|s| !bare(s)), "{word}: {suggestions:?}");
+            }
+        }
+    }
+    for lang in [ProofLang::Fr, ProofLang::FrCa] {
+        for word in ["l'écolle", "l'e\u{301}colle", "l’écolle", "l’e\u{301}colle"] {
+            let expected = if word.contains('’') { "l’école" } else { "l'école" };
+            let suggestions = wordcraft_proof::suggest_in(word, 8, lang);
+            assert!(suggestions.iter().any(|s| s == expected), "{lang:?} {word}: {suggestions:?}");
+            assert!(suggestions.iter().all(|s| !bare(s)), "{word}: {suggestions:?}");
+        }
+    }
 }

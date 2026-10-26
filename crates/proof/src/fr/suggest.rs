@@ -50,6 +50,14 @@ const COST_DROP_OR_ADD: u32 = 15;
 const COST_MISTYPE: u32 = 16;
 const COST_SCAN: u32 = 20;
 
+/// A recognized elision without the word it introduces is not a spelling repair.
+/// Restrict this to the existing French prefixes; other final apostrophes stay eligible.
+fn is_bare_elision(text: &str) -> bool {
+    text.strip_suffix('\'')
+        .or_else(|| text.strip_suffix('’'))
+        .is_some_and(|head| super::ELISIONS.iter().any(|prefix| head.eq_ignore_ascii_case(prefix)))
+}
+
 struct Collector<'a> {
     d: &'a AffixDict,
     /// The word, lower case.
@@ -87,6 +95,9 @@ impl Collector<'_> {
 
     /// Keep a suggestion known to be correct.
     fn keep(&mut self, text: String, cost: u32) {
+        if is_bare_elision(&text) {
+            return;
+        }
         self.seq += 1;
         let seq = self.seq;
         let e = self.found.entry(text).or_insert((cost, seq));
@@ -516,6 +527,79 @@ mod tests {
         assert_eq!(casing("iPhone"), Casing::Mixed);
         assert_eq!(casing("CEE"), Casing::Upper);
         assert_eq!(suggest_in(&d, "cce", 1), ["ce"]);
+        Ok(())
+    }
+    #[test]
+    fn only_recognized_bare_elisions_are_filtered() {
+        for prefix in super::super::ELISIONS {
+            for head in [prefix.to_string(), prefix.to_uppercase(), capitalize(prefix)] {
+                for apostrophe in ["'", "’"] {
+                    assert!(is_bare_elision(&format!("{head}{apostrophe}")));
+                }
+            }
+        }
+        for word in ["O'", "O’", "rock'", "rock’", "O'Neil", "aujourd'hui", "j'aime", "qu'elle", "l'école", "l'e\u{301}cole"] {
+            assert!(!is_bare_elision(word), "{word}");
+        }
+        for word in ["j''", "j'ami'", "", "'", "j"] {
+            assert!(!is_bare_elision(word), "{word}");
+        }
+    }
+
+    fn bare_elision_fixture() -> Result<AffixDict, String> {
+        AffixDict::from_hunspell(
+            "SET UTF-8\nICONV 1\nICONV ’ '\nTRY esaitnrulodcpmévqfgbh\nNOSUGGEST X\nFORBIDDENWORD F\nKEEPCASE K\n",
+            "14\nj'\nj'ai\nj'aime\nl'\nl'arbre\nqu'\nqu'elle\nO'/K\nO'Neil/K\naujourd'hui\nrock'\nsecret'/X\nbanni'/F\nAlice'/K\n",
+            &[],
+        )
+    }
+
+    #[test]
+    fn bare_elisions_do_not_fill_the_candidate_budget() -> Result<(), String> {
+        let d = bare_elision_fixture()?;
+        assert!(d.check("j'"), "the spelling dictionary itself is unchanged");
+        for (word, expected) in [("j'a", "j'ai"), ("J'a", "J'ai"), ("j’a", "j’ai"), ("J’a", "J’ai"), ("J'A", "J'AI"), ("J’A", "J’AI")] {
+            assert!(suggest_in(&d, word, 0).is_empty());
+            for max in [1, 6, 12] {
+                let suggestions = suggest_in(&d, word, max);
+                assert_eq!(suggestions.first().map(String::as_str), Some(expected), "{word}: {suggestions:?}");
+                assert!(suggestions.len() <= max);
+                assert!(suggestions.iter().all(|s| !is_bare_elision(s)), "{suggestions:?}");
+            }
+        }
+        let mut collector = Collector { d: &d, input: "j'a".into(), tested: HashSet::new(), found: HashMap::new(), seq: 0 };
+        collector.keep("j'".into(), COST_DROP_OR_ADD);
+        collector.keep("J’".into(), COST_CASE);
+        assert_eq!(collector.count_within(COST_MISTYPE), 0);
+        collector.offer("j'ai", COST_DROP_OR_ADD);
+        assert_eq!(collector.count_within(COST_MISTYPE), 1);
+        assert!(collector.found.contains_key("j'ai"));
+        Ok(())
+    }
+
+    #[test]
+    fn other_apostrophes_and_dictionary_policies_are_preserved() -> Result<(), String> {
+        let d = bare_elision_fixture()?;
+        for (word, expected) in [("rock", "rock'"), ("O'Nei", "O'Neil"), ("aujourd'hii", "aujourd'hui")] {
+            let suggestions = suggest_in(&d, word, 16);
+            assert!(suggestions.iter().any(|s| s == expected), "{word}: {suggestions:?}");
+        }
+        for (word, forbidden) in [("secrett'", "secret'"), ("bannni'", "banni'")] {
+            assert!(!d.can_suggest(forbidden));
+            let suggestions = suggest_in(&d, word, 32);
+            assert!(suggestions.iter().all(|s| !s.eq_ignore_ascii_case(forbidden)), "{word}: {suggestions:?}");
+        }
+        assert!(!d.can_suggest("alice'") && d.can_suggest("Alice'"));
+        let mut collector = Collector { d: &d, input: "test".into(), tested: HashSet::new(), found: HashMap::new(), seq: 0 };
+        for word in ["O'", "rock'", "O'Neil", "aujourd'hui"] {
+            collector.keep(word.into(), COST_SCAN);
+            assert!(collector.found.contains_key(word), "{word}");
+        }
+        crate::fr::test_dict::install();
+        for lang in [crate::ProofLang::Fr, crate::ProofLang::FrCa] {
+            let suggestions = crate::suggest_in("l'e\u{301}colle", 8, lang);
+            assert!(suggestions.iter().any(|s| s == "l'école"), "{lang:?}: {suggestions:?}");
+        }
         Ok(())
     }
 }
