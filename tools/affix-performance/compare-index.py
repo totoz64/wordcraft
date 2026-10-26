@@ -9,9 +9,9 @@ ROOT.mkdir(exist_ok=True)
 SOURCE_DIR = Path(__file__).resolve().parent
 ENGINES = {
     "before": {
-        "source_sha": "68266aaf071e981b73ef804384975615949350ca",
-        "run": 40370360081, "artifact_id": 12672182112,
-        "zip_sha256": "7dc39ccab58e9607456aea026853c4564cfbbb8ec0e01976b115287dae0f6afb",
+        "source_sha": "694a8e76079453de3fa68321d3ce11f49dcf9f39",
+        "run": 40362973260, "artifact_id": 12668188325,
+        "zip_sha256": "5e1889d9023b0696497768748e1727d996fe0703f839b040fff7387e70d69cff",
     },
     "after": {
         "source_sha": os.environ["GITHUB_SHA"],
@@ -118,7 +118,7 @@ report = {
         "192 fixed development cases; not a general-language speed estimate or accuracy score.",
         "One hosted VM and four paired repetitions limit generalization; CPU scheduling/frequency and file cache may still vary.",
         "Separate fresh runner processes model the same public proofing API surface; internal process state is not shared.",
-        "The measured before engine predates the NEEDAFFIX partner refinement. That marker has no affix continuation in the pinned French dictionary; the optimized after runner is built from this workflow source SHA.",
+        "The measured before engine is the pre-prefix baseline694. Equality of observations on this fixed sample is enforced; unit corrections are validated separately. The optimized after runner is built from this workflow source SHA.",
         "No Word timing is compared."
     ],
 }

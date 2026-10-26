@@ -63,7 +63,6 @@ pub const MAX_FLAGS: usize = 512;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 struct FlagSet([u64; MAX_FLAGS / 64]);
 
-
 #[cfg(test)]
 std::thread_local! {
     static PREFIX_PROFILE_COUNTS: std::cell::Cell<[u64; 5]> = const { std::cell::Cell::new([0; 5]) };
@@ -306,6 +305,8 @@ impl Rule {
 struct SfxGroup {
     strip: Box<str>,
     rules: Vec<u32>,
+    /// Cross suffix rules whose class can be granted by a prefix.
+    grant_rules: Vec<u32>,
 }
 
 /// Cross prefixes granting the same suffix classes and requiring the same partner.
@@ -705,14 +706,22 @@ impl AffixDict {
         // appended string's groups: a dictionary with many strips per suffix stays linear.
         let mut group_of: FxMap<(&str, &str), usize> = FxMap::default();
         let mut by_flag: Vec<Vec<u32>> = vec![Vec::new(); self.flag_chars.len()];
+        let grantable = self.prefixes.iter().filter(|r| r.cross).fold(FlagSet::default(), |flags, r| flags.union(r.cont));
         for (i, r) in self.suffixes.iter().enumerate() {
             let groups = idx.entry(r.add.clone()).or_default();
             let Ok(i) = u32::try_from(i) else { break };
+            let grants = r.cross && r.bit.intersects(grantable);
             match group_of.get(&(&*r.add, &*r.strip)).and_then(|&g| groups.get_mut(g)) {
-                Some(g) => g.rules.push(i),
+                Some(g) => {
+                    g.rules.push(i);
+                    if grants {
+                        g.grant_rules.push(i);
+                    }
+                }
                 None => {
                     group_of.insert((&r.add, &r.strip), groups.len());
-                    groups.push(SfxGroup { strip: r.strip.clone(), rules: vec![i] });
+                    let grant_rules = if grants { vec![i] } else { Vec::new() };
+                    groups.push(SfxGroup { strip: r.strip.clone(), rules: vec![i], grant_rules });
                 }
             }
             if let Some(bit) = self.flag_chars.iter().position(|&c| c == r.flag)
@@ -972,15 +981,18 @@ impl AffixDict {
                     }
                     // Both affixes must permit a cross product. A suffix carrying NEEDAFFIX
                     // is valid here because the prefix supplies the additional affix.
-                    let (ordinary, needing) =
-                        g.rules.iter().filter_map(|&i| self.suffixes.get(i as usize)).filter(|r| r.cross && r.bit.intersects(self.prefix_grant_flags) && r.cond_matches(&root, true)).fold(
-                            (FlagSet::default(), FlagSet::default()),
-                            |(ordinary, needing), r| {
+                    if !g.grant_rules.is_empty() {
+                        let (ordinary, needing) = g
+                            .grant_rules
+                            .iter()
+                            .filter_map(|&i| self.suffixes.get(i as usize))
+                            .filter(|r| r.cond_matches(&root, true))
+                            .fold((FlagSet::default(), FlagSet::default()), |(ordinary, needing), r| {
                                 if r.needs_affix { (ordinary, needing.union(r.bit)) } else { (ordinary.union(r.bit), needing) }
-                            },
-                        );
-                    if self.prefix_grants(&root, ordinary, needing, reject) {
-                        return true;
+                            });
+                        if self.prefix_grants(&root, ordinary, needing, reject) {
+                            return true;
+                        }
                     }
                 }
             }
@@ -1432,7 +1444,6 @@ pub(crate) mod tests {
     const AFF: &str = "SET UTF-8\nTRY aeoiułkr\n\nPFX b Y 1\nPFX b   0   nie   .\n\nSFX a Y 3\nSFX a   0   y     [^y]\nSFX a   ek  ka    ek\nSFX a   0   em    .\n\nSFX c N 1\nSFX c   a   ą     a\n\nMAP 2\nMAP aą\nMAP oóu\nREP 2\nREP ż rz\nREP u ó\n";
     const DIC: &str = "4\nkot/ab\npiesek/a\nkrowa/c\nWarszawa/c\n";
 
-
     #[test]
     #[ignore = "operation profiling requires checksum-pinned French dictionary"]
     fn profile_prefix_continuation_work() {
@@ -1454,7 +1465,6 @@ pub(crate) mod tests {
         });
     }
 
-
     #[test]
     fn prefix_grant_index_is_linear_and_rebuilt_for_compact_input() {
         let aff = "SET UTF-8\nNEEDAFFIX N\nPFX P Y 1\nPFX P 0 pre/ST .\nPFX Q Y 1\nPFX Q 0 re/TN .\nPFX Z N 1\nPFX Z 0 no/S .\nSFX S Y 1\nSFX S 0 s .\nSFX T Y 1\nSFX T 0 t/N .\n";
@@ -1466,6 +1476,9 @@ pub(crate) mod tests {
             let indexed = d.prefix_grant_groups.iter().map(|group| group.rules.len()).sum::<usize>();
             assert_eq!(indexed, 2, "each cross prefix is indexed once, including multi-flag continuations");
             assert!(!d.prefix_grant_flags.is_empty());
+            let indexed_suffixes = d.sfx_index.values().flatten().map(|group| group.grant_rules.len()).sum::<usize>();
+            assert_eq!(indexed_suffixes, 2, "each eligible suffix index is stored at most once");
+
         }
         let plain = AffixDict::from_hunspell("PFX P Y 1\nPFX P 0 pre .\nSFX S Y 1\nSFX S 0 s .\n", "1\nroot/PS\n", &[]).unwrap();
         assert!(plain.prefix_grant_flags.is_empty() && plain.prefix_grant_groups.is_empty());
