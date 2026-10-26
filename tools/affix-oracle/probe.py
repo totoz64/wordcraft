@@ -28,6 +28,24 @@ for zero in (False, True):
                 if "prepreroots" not in rejected:
                     raise RuntimeError(f"unexpected stacked prefix: {name}")
                 observations.append({"fixture":name,"aff":aff,"dic":dic,"accepted":{w:w not in rejected for w in words},"stderr":result.stderr})
+
+# Original partner-affix NEEDAFFIX probes: inspect CLI behavior without source.
+for pneeds in (False, True):
+    for sneeds in (False, True):
+        name = f"partner-needaffix-{pneeds}-{sneeds}"
+        directory = root / name
+        directory.mkdir(exist_ok=True)
+        pcont = "S" + ("N" if pneeds else "")
+        scont = "/N" if sneeds else ""
+        aff = f"SET UTF-8\nNEEDAFFIX N\nPFX P Y 1\nPFX P 0 pre/{pcont} .\nSFX S Y 1\nSFX S 0 s{scont} .\n"
+        base = directory / "probe"
+        base.with_suffix(".aff").write_text(aff, encoding="utf-8")
+        base.with_suffix(".dic").write_text("1\nroot/P\n", encoding="utf-8")
+        words = ["root", "roots", "preroot", "preroots", "prepreroots"]
+        result = subprocess.run(["hunspell", "-l", "-d", str(base)], input="\n".join(words)+"\n", text=True, capture_output=True, check=True)
+        rejected = set(result.stdout.splitlines())
+        observations.append({"fixture":name,"aff":aff,"dic":"1\nroot/P\n","accepted":{w:w not in rejected for w in words},"stderr":result.stderr})
+
 version = subprocess.run(["hunspell", "-v"], text=True, capture_output=True, check=True).stdout
 output = Path("affix-oracle-observations.json")
 output.write_text(json.dumps({"hunspell_version":version,"method":"CLI only, original fixtures, no implementation source read","observations":observations}, indent=2),encoding="utf-8")
