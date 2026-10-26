@@ -909,14 +909,13 @@ impl AffixDict {
                     }
                     // Both affixes must permit a cross product. A suffix carrying NEEDAFFIX
                     // is valid here because the prefix supplies the additional affix.
-                    let (ordinary, needing) = g
-                        .rules
-                        .iter()
-                        .filter_map(|&i| self.suffixes.get(i as usize))
-                        .filter(|r| r.cross && r.cond_matches(&root, true))
-                        .fold((FlagSet::default(), FlagSet::default()), |(ordinary, needing), r| {
-                            if r.needs_affix { (ordinary, needing.union(r.bit)) } else { (ordinary.union(r.bit), needing) }
-                        });
+                    let (ordinary, needing) =
+                        g.rules.iter().filter_map(|&i| self.suffixes.get(i as usize)).filter(|r| r.cross && r.cond_matches(&root, true)).fold(
+                            (FlagSet::default(), FlagSet::default()),
+                            |(ordinary, needing), r| {
+                                if r.needs_affix { (ordinary, needing.union(r.bit)) } else { (ordinary.union(r.bit), needing) }
+                            },
+                        );
                     if self.prefix_grants(&root, ordinary, needing, reject) {
                         return true;
                     }
