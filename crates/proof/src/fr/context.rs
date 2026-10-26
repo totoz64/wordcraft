@@ -3,13 +3,34 @@ use crate::{Issue, IssueKind, ProofLang};
 
 /// Common first-group verbs; avoid deriving verbs from arbitrary words such as hier or cher.
 const PAST_FORMS: &[(&str, &str)] = &[
-    ("aimer", "aimé"), ("chanter", "chanté"), ("chercher", "cherché"), ("commencer", "commencé"),
-    ("danser", "dansé"), ("dessiner", "dessiné"), ("donner", "donné"), ("écouter", "écouté"),
-    ("envoyer", "envoyé"), ("fermer", "fermé"), ("garder", "gardé"), ("jouer", "joué"),
-    ("laisser", "laissé"), ("laver", "lavé"), ("manger", "mangé"), ("marcher", "marché"),
-    ("oublier", "oublié"), ("parler", "parlé"), ("passer", "passé"), ("penser", "pensé"),
-    ("porter", "porté"), ("préparer", "préparé"), ("ranger", "rangé"), ("regarder", "regardé"),
-    ("terminer", "terminé"), ("travailler", "travaillé"), ("trouver", "trouvé"), ("visiter", "visité"),
+    ("aimer", "aimé"),
+    ("chanter", "chanté"),
+    ("chercher", "cherché"),
+    ("commencer", "commencé"),
+    ("danser", "dansé"),
+    ("dessiner", "dessiné"),
+    ("donner", "donné"),
+    ("écouter", "écouté"),
+    ("envoyer", "envoyé"),
+    ("fermer", "fermé"),
+    ("garder", "gardé"),
+    ("jouer", "joué"),
+    ("laisser", "laissé"),
+    ("laver", "lavé"),
+    ("manger", "mangé"),
+    ("marcher", "marché"),
+    ("oublier", "oublié"),
+    ("parler", "parlé"),
+    ("passer", "passé"),
+    ("penser", "pensé"),
+    ("porter", "porté"),
+    ("préparer", "préparé"),
+    ("ranger", "rangé"),
+    ("regarder", "regardé"),
+    ("terminer", "terminé"),
+    ("travailler", "travaillé"),
+    ("trouver", "trouvé"),
+    ("visiter", "visité"),
 ];
 
 /// Adjacent words must share a line and have no intervening punctuation or quotation marks.
@@ -36,7 +57,10 @@ fn initial_past(text: &str, ws: &[(usize, usize)], v: &mut Vec<Issue>) {
         let Some(&(a1, b1)) = ws.get(1) else { return };
         let Some(aux) = text.get(a1..b1) else { return };
         if !joined(text, b0, a1)
-            || !matches!((first.as_str(), aux), ("tu", "as") | ("il" | "elle" | "on", "a") | ("nous", "avons") | ("vous", "avez") | ("ils" | "elles", "ont"))
+            || !matches!(
+                (first.as_str(), aux),
+                ("tu", "as") | ("il" | "elle" | "on", "a") | ("nous", "avons") | ("vous", "avez") | ("ils" | "elles", "ont")
+            )
         {
             return;
         }
@@ -91,11 +115,17 @@ mod tests {
     fn french_contextual_rules_correct_the_selected_token_in_both_regions() {
         for lang in [ProofLang::Fr, ProofLang::FrCa] {
             for (text, old, new) in [
-                ("Il à faim.", "à", "a"), ("Elle à soif.", "à", "a"), ("On à besoin de repos.", "à", "a"),
-                ("Ils ont manger une pomme.", "manger", "mangé"), ("Elle a préparer le repas.", "préparer", "préparé"),
-                ("Nous avons terminer le travail.", "terminer", "terminé"), ("J’ai écouter le concert.", "écouter", "écouté"),
-                ("Tu as chercher ton livre.", "chercher", "cherché"), ("Vous avez regarder le ciel.", "regarder", "regardé"),
-                ("Les livres sont la où il reste de la place.", "la", "là"), ("La où il habite, il neige.", "La", "Là"),
+                ("Il à faim.", "à", "a"),
+                ("Elle à soif.", "à", "a"),
+                ("On à besoin de repos.", "à", "a"),
+                ("Ils ont manger une pomme.", "manger", "mangé"),
+                ("Elle a préparer le repas.", "préparer", "préparé"),
+                ("Nous avons terminer le travail.", "terminer", "terminé"),
+                ("J’ai écouter le concert.", "écouter", "écouté"),
+                ("Tu as chercher ton livre.", "chercher", "cherché"),
+                ("Vous avez regarder le ciel.", "regarder", "regardé"),
+                ("Les livres sont la où il reste de la place.", "la", "là"),
+                ("La où il habite, il neige.", "La", "Là"),
             ] {
                 let issues = super::super::grammar::check_in(text, lang);
                 assert_eq!(fixes(text, lang), [(old.into(), new.into())], "{text}");
@@ -111,12 +141,26 @@ mod tests {
     #[test]
     fn french_contextual_rules_leave_correct_and_ambiguous_text_quiet() {
         for text in [
-            "Il a faim.", "Elle a soif.", "On a besoin de repos.", "Il arrive à pied.", "As-tu à manger ?",
-            "Ils ont mangé une pomme.", "Elle a préparé le repas.", "Nous avons terminé le travail.",
-            "Il veut manger une pomme.", "Ils ont à manger.", "Il a cher payé.", "Nous avons hier terminé.",
-            "Elle a Roger au téléphone.", "Il dit avoir préparer le repas.", "La pomme que nous avons manger est rouge.",
-            "Nous les avons regarder.", "Nous avons bien manger.", "Les livres sont là où il reste de la place.",
-            "Prends-la où tu veux.", "Il dit de où il vient.",
+            "Il a faim.",
+            "Elle a soif.",
+            "On a besoin de repos.",
+            "Il arrive à pied.",
+            "As-tu à manger ?",
+            "Ils ont mangé une pomme.",
+            "Elle a préparé le repas.",
+            "Nous avons terminé le travail.",
+            "Il veut manger une pomme.",
+            "Ils ont à manger.",
+            "Il a cher payé.",
+            "Nous avons hier terminé.",
+            "Elle a Roger au téléphone.",
+            "Il dit avoir préparer le repas.",
+            "La pomme que nous avons manger est rouge.",
+            "Nous les avons regarder.",
+            "Nous avons bien manger.",
+            "Les livres sont là où il reste de la place.",
+            "Prends-la où tu veux.",
+            "Il dit de où il vient.",
         ] {
             // Existing elision can independently flag de où; this rule must not create an article elision.
             let mut own = Vec::new();
