@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-26 · **Change:** minor (literal doubled-initial spelling repairs preserve case); previously minor (bounded grand-chose locution and language-context guard); previously minor (bounded contextual suggestions under benchmark validation); previously minor (French uppercase/number proofing options and review-record corrections); previously minor (integration with current main, shared NFC lookup and external interface catalogs); previously minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-26 · **Change:** minor (complete elision spelling candidates); previously minor (literal doubled-initial spelling repairs preserve case); previously minor (bounded grand-chose locution and language-context guard); previously minor (bounded contextual suggestions under benchmark validation); previously minor (French uppercase/number proofing options and review-record corrections); previously minor (integration with current main, shared NFC lookup and external interface catalogs); previously minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660)
 
 ## Shared-engine compatibility and reproducible CI
 
@@ -68,6 +68,24 @@ must pass its own required checks before integration. The separate short-word di
 showed that a valid candidate can already exist below the six displayed suggestions;
 contextual ranking and frequency data remain future work.
 
+
+## Complete elision suggestions
+
+French spelling suggestions exclude a candidate consisting only of an existing recognized
+elision prefix and its apostrophe, such as j' or qu'. The check runs when the collector
+admits a candidate, before the count used for fallback scanning and before the final limit.
+It reuses the French elision list and accepts either apostrophe and letter case. It does not
+reject other final apostrophes, internal apostrophes or dictionary-licensed names.
+
+This is a candidate-validity fix, not a new grammar rule or a ranking change. Remaining
+candidates keep their existing costs and relative discovery order; rejecting an incomplete
+candidate can allow the already bounded fallback scan to run. Dictionary suggestion flags,
+case restrictions, input limits and the caller's maximum remain in effect. Synthetic fixtures
+exercise names and dictionary policies; the required runtime Dicollecte gate checks j'a/J’a,
+case, both French regions, maximum0/1/6/12 and composed/decomposed elided words.
+Historical exposed observations justify the bug report but are not a blind improvement score.
+No dictionary data or corpus inputs are bundled.
+
 ## Reproduce the checks
 
 The synthetic suite runs without downloads:
@@ -99,6 +117,7 @@ declaring a workflow here does not mean its remote runs have passed.
 
 | Order | Deliverable | Acceptance evidence |
 |---|---|---|
+| 2026-10-26 | minor | Exclude only recognized bare French elision prefixes from spelling candidates before fallback counts and max; preserve other apostrophes, names and dictionary policies |
 | 1 | Integrate this baseline and its installation guide | Current-main diff, local CI, real dictionary gate, native UI smoke test; maintainer review and remote checks before merge |
 | 2 | Add French AutoFormat for spaces around `; : ! ?` and `« »` | Typing-command regression cases for fr-FR and fr-CA, ordinary/non-breaking spaces, URLs, times, undo and pasted text; update `typing-parity.md` |
 | 3 | Expand the regression corpus from reported errors | One short synthetic sentence per failure, expected suggestions or explicit quiet result, region and dictionary version; no personal documents or unreviewed data committed |
