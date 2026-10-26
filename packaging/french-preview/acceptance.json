@@ -1,0 +1,123 @@
+{
+  "protocol": "wordcraft-french-delivery-acceptance-v1",
+  "status": "specification_not_executed",
+  "scope": "Small original development checks, not the 59048 corpus or a linguistic quality score.",
+  "manual_gui_required": true,
+  "cases": [
+    {
+      "id": "clean",
+      "text": "Une maison près de l’école.",
+      "lang": "fr-FR",
+      "expect": {
+        "noSpelling": [
+          "Une",
+          "maison",
+          "près",
+          "de",
+          "l’école"
+        ]
+      }
+    },
+    {
+      "id": "dictionary",
+      "text": "Une maisonn près de l’école.",
+      "lang": "fr-FR",
+      "expect": {
+        "issueText": "maisonn",
+        "kind": "spelling",
+        "suggestion": "maison"
+      }
+    },
+    {
+      "id": "casing",
+      "text": "CCe bateau arrive.",
+      "lang": "fr-FR",
+      "expect": {
+        "issueText": "CCe",
+        "kind": "spelling",
+        "firstSuggestion": "Ce"
+      }
+    },
+    {
+      "id": "context",
+      "text": "Il à faim.",
+      "lang": "fr-FR",
+      "expect": {
+        "issueText": "à",
+        "kind": "grammar",
+        "suggestion": "a"
+      }
+    },
+    {
+      "id": "participle",
+      "text": "Elle a préparer le repas.",
+      "lang": "fr-FR",
+      "expect": {
+        "issueText": "préparer",
+        "kind": "grammar",
+        "suggestion": "préparé"
+      }
+    },
+    {
+      "id": "locution",
+      "text": "Cette boîte ne contient pas grand chose.",
+      "lang": "fr-FR",
+      "expect": {
+        "issueText": "grand chose",
+        "kind": "grammar",
+        "suggestion": "grand-chose"
+      }
+    },
+    {
+      "id": "locution-abstention",
+      "text": "Pas grand chose ne change au programme.",
+      "lang": "fr-FR",
+      "expect": {
+        "noSuggestion": "grand-chose"
+      }
+    },
+    {
+      "id": "units",
+      "text": "30 centimètres, 20 grammes et 40 watts.",
+      "lang": "fr-FR",
+      "expect": {
+        "noSpelling": [
+          "centimètres",
+          "grammes",
+          "watts"
+        ]
+      }
+    },
+    {
+      "id": "nfd-context",
+      "text": "Il à faim.",
+      "lang": "fr-FR",
+      "expect": {
+        "issueText": "à",
+        "kind": "grammar",
+        "suggestion": "a"
+      }
+    },
+    {
+      "id": "foreign-boundary",
+      "text": "He keeps pas grand chose.",
+      "lang": "en-US",
+      "expect": {
+        "noSuggestion": "grand-chose"
+      }
+    }
+  ],
+  "correction_undo": {
+    "text": "Une maisonn près de l’école.",
+    "replacement": "maison",
+    "corrected": "Une maison près de l’école."
+  },
+  "manual_checks": [
+    "ZIP extracted in a new directory; native GUI opens without a console window.",
+    "French document language and dictionary status show an active readable dictionary.",
+    "F7 opens the right pane; context, visible suggestions, scrolling and actions remain usable.",
+    "Click maison, Ctrl+Z, Ignore once/all, Add to dictionary, then restart with the isolated profile.",
+    "Inspect exact-SHA French light/dark PNGs and the existing English fixture separately; headless evidence is not a native GUI click.",
+    "Do not apply an official update during the preview; native startup currently checks for updates."
+  ]
+}
