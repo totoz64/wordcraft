@@ -1,6 +1,6 @@
 # Shipping and improving French proofing
 
-> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-26 · **Change:** minor (literal doubled-initial spelling repairs preserve case); previously minor (bounded grand-chose locution and language-context guard); previously minor (bounded contextual suggestions under benchmark validation); previously minor (French uppercase/number proofing options and review-record corrections); previously minor (integration with current main, shared NFC lookup and external interface catalogs); previously minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660)
+> **Last reviewed:** 2026-10-20 · **Last updated:** 2026-10-26 · **Change:** minor (bounded original morphology and explicit-subject agreement); previously minor (literal doubled-initial spelling repairs preserve case); previously minor (bounded grand-chose locution and language-context guard); previously minor (bounded contextual suggestions under benchmark validation); previously minor (French uppercase/number proofing options and review-record corrections); previously minor (integration with current main, shared NFC lookup and external interface catalogs); previously minor (French spelling keeps attached combining marks and checks compound boundaries); previously minor (French proofing region parser respects extension boundaries); previously minor (French dictionary recovery and regional labels); previously trivial (French hyphenation CI path coverage); previously minor (historical affix compatibility gates and pinned French CI toolchain); previously major (French integration and regression gates, based on #1660)
 
 ## Shared-engine compatibility and reproducible CI
 
@@ -68,6 +68,17 @@ must pass its own required checks before integration. The separate short-word di
 showed that a valid candidate can already exist below the six displayed suggestions;
 contextual ranking and frequency data remain future work.
 
+## Bounded morphological follow-up
+
+A separate original morphology layer records the supported readings of 27 explicit first-group
+verb paradigms plus être/avoir/suivre. Its first consumer checks adjacent, real paragraph-initial subject pronouns,
+requires the full context in one French region, preserves original NFC/NFD bounds, and abstains
+when readings agree or repairs diverge. This is not general parsing or a change to spelling
+ranking. The initial 27-lemma historical model produced no candidates; the 30-lemma model
+produced 24 candidates requiring local adjudication and an audit of subject-versus-verb intent.
+No historical gain is claimed before that audit and exact-head Rust validation. See [French grammatical architecture](french-grammar-architecture.md) for
+coverage, ambiguity, independent original development cases and validation requirements.
+
 ## Reproduce the checks
 
 The synthetic suite runs without downloads:
@@ -119,6 +130,7 @@ before proposing a suggestion/ranking change. Keep follow-ups independently revi
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-26 | minor | Separate bounded original verb morphology from explicit-subject agreement; preserve ambiguous readings, regions, original ranges and command undo; no historical corpus gain claimed |
 | 2026-10-26 | minor | Suggest grand-chose only after exact lower-case pas/plus/jamais; preserve whole-pair UTF-8 ranges and require all consulted context in one French language region |
 | 2026-10-26 | minor | Contextual à/où and selected avoir/participle rules compare NFC lexical copies while preserving original NFD issue ranges; regression coverage includes both French regions, replacement and undo |
 | 2026-10-26 | minor | Preserve the literal initial case of a doubled-capital spelling repair; synthetic dictionary-policy regressions and independently recorded three-platform diagnostics |

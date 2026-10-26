@@ -22,7 +22,8 @@
 //!   never before a proper noun, `onze`, `oui`, `y…` words (`le yaourt`) or `la une`.
 //!
 //! Narrow context rules cover paragraph-initial avoir expressions and selected first-group
-//! past forms, plus là où. General agreement/conjugation and English a/an rules remain out of scope.
+//! past forms, plus là où. A bounded morphology layer adds explicit initial pronoun agreement;
+//! it does not provide general parsing or English a/an rules.
 
 use crate::{Issue, IssueKind, ProofLang, words};
 
@@ -469,11 +470,11 @@ pub fn check(text: &str) -> Vec<Issue> {
 /// Grammar issues in a paragraph of `lang` text ([`ProofLang::Fr`], or [`ProofLang::FrCa`] for
 /// Quebec typography), in order.
 pub fn check_in(text: &str, lang: ProofLang) -> Vec<Issue> {
-    check_in_with_locution_context(text, lang, |_, _| true)
+    check_in_with_french_context(text, lang, |_, _| true)
 }
 
-/// Only the new locution uses this guard; existing paragraph-wide rules retain their context.
-pub(crate) fn check_in_with_locution_context(text: &str, lang: ProofLang, context_allowed: impl Fn(usize, usize) -> bool) -> Vec<Issue> {
+/// New context consumers use this guard; existing paragraph-wide rules retain their context.
+pub(crate) fn check_in_with_french_context(text: &str, lang: ProofLang, context_allowed: impl Fn(usize, usize) -> bool) -> Vec<Issue> {
     let ws: Vec<(usize, usize)> = words(text);
     let mut v = Vec::new();
     high_punctuation(text, lang == ProofLang::FrCa, &mut v);
@@ -483,7 +484,8 @@ pub(crate) fn check_in_with_locution_context(text: &str, lang: ProofLang, contex
     sentence_capitals(text, &ws, &mut v);
     elisions(text, &ws, &mut v);
     super::context::check(text, &ws, &mut v);
-    super::context::grand_chose(text, &ws, &mut v, context_allowed);
+    super::context::grand_chose(text, &ws, &mut v, &context_allowed);
+    super::agreement::check(text, &ws, &mut v, context_allowed);
     for i in &mut v {
         i.lang = lang;
     }

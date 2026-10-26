@@ -924,8 +924,8 @@ pub fn check_text_with(text: &str, spans: &[(Range<usize>, ProofLang)], opts: &O
     langs.dedup();
     for lang in langs {
         let found = if matches!(lang, ProofLang::Fr | ProofLang::FrCa) {
-            fr::grammar::check_in_with_locution_context(text, lang, |start, end| {
-                // Every word consulted by the locution must share one proofing-language span.
+            fr::grammar::check_in_with_french_context(text, lang, |start, end| {
+                // Every word consulted by a guarded French rule must share one proofing-language span.
                 let k = merged.partition_point(|(r, _)| r.end <= start);
                 merged.get(k).is_some_and(|(r, l)| *l == lang && r.start <= start && end <= r.end)
             })
