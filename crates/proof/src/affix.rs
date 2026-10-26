@@ -909,13 +909,15 @@ impl AffixDict {
                     }
                     // Both affixes must permit a cross product. A suffix carrying NEEDAFFIX
                     // is valid here because the prefix supplies the additional affix.
-                    let granted = g
+                    let (ordinary, needing) = g
                         .rules
                         .iter()
                         .filter_map(|&i| self.suffixes.get(i as usize))
                         .filter(|r| r.cross && r.cond_matches(&root, true))
-                        .fold(FlagSet::default(), |m, r| m.union(r.bit));
-                    if !granted.is_empty() && self.prefix_grants(&root, granted, reject) {
+                        .fold((FlagSet::default(), FlagSet::default()), |(ordinary, needing), r| {
+                            if r.needs_affix { (ordinary, needing.union(r.bit)) } else { (ordinary.union(r.bit), needing) }
+                        });
+                    if self.prefix_grants(&root, ordinary, needing, reject) {
                         return true;
                     }
                 }
@@ -927,10 +929,15 @@ impl AffixDict {
     /// A prefix may grant a suffix class that the stem itself does not carry.
     /// This separate path strips exactly one prefix under one suffix; it never recurses or
     /// changes the historical suffix-continuation walk.
-    fn prefix_grants(&self, w: &str, flags: FlagSet, reject: FlagSet) -> bool {
+    fn prefix_grants(&self, w: &str, ordinary: FlagSet, needing: FlagSet, reject: FlagSet) -> bool {
+        if ordinary.is_empty() && needing.is_empty() {
+            return false;
+        }
         let mut root = String::with_capacity(w.len() + 8);
         for r in &self.prefixes {
-            if !r.cross || !r.cont.intersects(flags) {
+            // Two affixes that each require a further affix cannot satisfy each other.
+            let allowed = if r.needs_affix { ordinary } else { ordinary.union(needing) };
+            if !r.cross || !r.cont.intersects(allowed) {
                 continue;
             }
             let Some(rest) = w.strip_prefix(&*r.add) else { continue };
@@ -1108,7 +1115,7 @@ impl AffixDict {
                     if out.len() >= MAX_FORMS || work > MAX_FORMS_WORK {
                         return out;
                     }
-                    if !s.cross || !s.cond_matches(&prefixed, true) {
+                    if !s.cross || (r.needs_affix && s.needs_affix) || !s.cond_matches(&prefixed, true) {
                         continue;
                     }
                     let Some(base) = prefixed.strip_suffix(&*s.strip) else { continue };
