@@ -1,0 +1,931 @@
+[
+  {
+    "id": "F01",
+    "text": "chiens chevaux",
+    "segments": [
+      {
+        "id": 1,
+        "surface": "chiens",
+        "span_utf16": [
+          0,
+          6
+        ],
+        "span_utf8": [
+          0,
+          6
+        ]
+      },
+      {
+        "id": 2,
+        "surface": "chevaux",
+        "span_utf16": [
+          7,
+          14
+        ],
+        "span_utf8": [
+          7,
+          14
+        ]
+      }
+    ],
+    "focus": [
+      {
+        "surface": "chiens",
+        "required_readings": [
+          {
+            "nature": "nom",
+            "lemme": "chien",
+            "traits": {
+              "genre": "masculin",
+              "nombre": "pluriel"
+            },
+            "components": null
+          }
+        ],
+        "token": "chiens",
+        "segment_id": 1
+      },
+      {
+        "surface": "chevaux",
+        "required_readings": [
+          {
+            "nature": "nom",
+            "lemme": "cheval",
+            "traits": {
+              "genre": "masculin",
+              "nombre": "pluriel"
+            },
+            "components": null
+          }
+        ],
+        "token": "chevaux",
+        "segment_id": 2
+      }
+    ]
+  },
+  {
+    "id": "F02",
+    "text": "petites",
+    "segments": [
+      {
+        "id": 1,
+        "surface": "petites",
+        "span_utf16": [
+          0,
+          7
+        ],
+        "span_utf8": [
+          0,
+          7
+        ]
+      }
+    ],
+    "focus": [
+      {
+        "surface": "petites",
+        "required_readings": [
+          {
+            "nature": "adjectif",
+            "lemme": "petit",
+            "traits": {
+              "genre": "feminin",
+              "nombre": "pluriel"
+            },
+            "components": null
+          },
+          {
+            "nature": "nom",
+            "lemme": "petit",
+            "traits": {
+              "genre": "feminin",
+              "nombre": "pluriel"
+            },
+            "components": null
+          }
+        ],
+        "segment_id": 1,
+        "token": "petites"
+      }
+    ]
+  },
+  {
+    "id": "F03",
+    "text": "les",
+    "segments": [
+      {
+        "id": 1,
+        "surface": "les",
+        "span_utf16": [
+          0,
+          3
+        ],
+        "span_utf8": [
+          0,
+          3
+        ]
+      }
+    ],
+    "focus": [
+      {
+        "surface": "les",
+        "required_readings": [
+          {
+            "nature": "determinant",
+            "lemme": "le",
+            "traits": {
+              "type": "article_defini",
+              "nombre": "pluriel",
+              "genre": null
+            },
+            "components": null
+          },
+          {
+            "nature": "pronom",
+            "lemme": "le",
+            "traits": {
+              "type": "personnel",
+              "personne": "3",
+              "nombre": "pluriel",
+              "genre": null
+            },
+            "components": null
+          }
+        ],
+        "must_not_default_gender": true,
+        "segment_id": 1,
+        "token": "les"
+      }
+    ]
+  },
+  {
+    "id": "F04",
+    "text": "porte",
+    "segments": [
+      {
+        "id": 1,
+        "surface": "porte",
+        "span_utf16": [
+          0,
+          5
+        ],
+        "span_utf8": [
+          0,
+          5
+        ]
+      }
+    ],
+    "focus": [
+      {
+        "surface": "porte",
+        "required_readings": [
+          {
+            "nature": "nom",
+            "lemme": "porte",
+            "traits": {
+              "genre": "feminin",
+              "nombre": "singulier"
+            },
+            "components": null
+          },
+          {
+            "nature": "verbe",
+            "lemme": "porter",
+            "traits": {
+              "mode": "indicatif",
+              "temps": "present",
+              "personne": "1",
+              "nombre": "singulier"
+            },
+            "components": null
+          },
+          {
+            "nature": "verbe",
+            "lemme": "porter",
+            "traits": {
+              "mode": "indicatif",
+              "temps": "present",
+              "personne": "3",
+              "nombre": "singulier"
+            },
+            "components": null
+          },
+          {
+            "nature": "verbe",
+            "lemme": "porter",
+            "traits": {
+              "mode": "subjonctif",
+              "temps": "present",
+              "personne": "1",
+              "nombre": "singulier"
+            },
+            "components": null
+          },
+          {
+            "nature": "verbe",
+            "lemme": "porter",
+            "traits": {
+              "mode": "subjonctif",
+              "temps": "present",
+              "personne": "3",
+              "nombre": "singulier"
+            },
+            "components": null
+          },
+          {
+            "nature": "verbe",
+            "lemme": "porter",
+            "traits": {
+              "mode": "imperatif",
+              "temps": "present",
+              "personne": "2",
+              "nombre": "singulier"
+            },
+            "components": null
+          }
+        ],
+        "segment_id": 1,
+        "token": "porte"
+      }
+    ]
+  },
+  {
+    "id": "F05",
+    "text": "suis",
+    "segments": [
+      {
+        "id": 1,
+        "surface": "suis",
+        "span_utf16": [
+          0,
+          4
+        ],
+        "span_utf8": [
+          0,
+          4
+        ]
+      }
+    ],
+    "focus": [
+      {
+        "surface": "suis",
+        "required_readings": [
+          {
+            "nature": "verbe",
+            "lemme": "être",
+            "traits": {
+              "mode": "indicatif",
+              "temps": "present",
+              "personne": "1",
+              "nombre": "singulier"
+            },
+            "components": null
+          },
+          {
+            "nature": "verbe",
+            "lemme": "suivre",
+            "traits": {
+              "mode": "indicatif",
+              "temps": "present",
+              "personne": "1",
+              "nombre": "singulier"
+            },
+            "components": null
+          },
+          {
+            "nature": "verbe",
+            "lemme": "suivre",
+            "traits": {
+              "mode": "indicatif",
+              "temps": "present",
+              "personne": "2",
+              "nombre": "singulier"
+            },
+            "components": null
+          },
+          {
+            "nature": "verbe",
+            "lemme": "suivre",
+            "traits": {
+              "mode": "imperatif",
+              "temps": "present",
+              "personne": "2",
+              "nombre": "singulier"
+            },
+            "components": null
+          }
+        ],
+        "segment_id": 1,
+        "token": "suis"
+      }
+    ]
+  },
+  {
+    "id": "F06",
+    "text": "jouent",
+    "segments": [
+      {
+        "id": 1,
+        "surface": "jouent",
+        "span_utf16": [
+          0,
+          6
+        ],
+        "span_utf8": [
+          0,
+          6
+        ]
+      }
+    ],
+    "focus": [
+      {
+        "surface": "jouent",
+        "required_readings": [
+          {
+            "nature": "verbe",
+            "lemme": "jouer",
+            "traits": {
+              "mode": "indicatif",
+              "temps": "present",
+              "personne": "3",
+              "nombre": "pluriel"
+            },
+            "components": null
+          },
+          {
+            "nature": "verbe",
+            "lemme": "jouer",
+            "traits": {
+              "mode": "subjonctif",
+              "temps": "present",
+              "personne": "3",
+              "nombre": "pluriel"
+            },
+            "components": null
+          }
+        ],
+        "segment_id": 1,
+        "token": "jouent"
+      }
+    ]
+  },
+  {
+    "id": "F07",
+    "text": "Ils joue.",
+    "segments": [
+      {
+        "id": 1,
+        "surface": "Ils",
+        "span_utf16": [
+          0,
+          3
+        ],
+        "span_utf8": [
+          0,
+          3
+        ]
+      },
+      {
+        "id": 2,
+        "surface": "joue",
+        "span_utf16": [
+          4,
+          8
+        ],
+        "span_utf8": [
+          4,
+          8
+        ]
+      },
+      {
+        "id": 3,
+        "surface": ".",
+        "span_utf16": [
+          8,
+          9
+        ],
+        "span_utf8": [
+          8,
+          9
+        ]
+      }
+    ],
+    "focus": [
+      {
+        "surface": "Ils",
+        "required_readings": [
+          {
+            "nature": "pronom",
+            "lemme": "il",
+            "traits": {
+              "personne": "3",
+              "nombre": "pluriel",
+              "genre": "masculin"
+            },
+            "components": null
+          }
+        ],
+        "segment_id": 1,
+        "token": "Ils"
+      },
+      {
+        "surface": "joue",
+        "required_readings": [
+          {
+            "nature": "verbe",
+            "lemme": "jouer",
+            "traits": {
+              "mode": "indicatif",
+              "temps": "present",
+              "personne": "1",
+              "nombre": "singulier"
+            },
+            "components": null
+          },
+          {
+            "nature": "verbe",
+            "lemme": "jouer",
+            "traits": {
+              "mode": "indicatif",
+              "temps": "present",
+              "personne": "3",
+              "nombre": "singulier"
+            },
+            "components": null
+          },
+          {
+            "nature": "verbe",
+            "lemme": "jouer",
+            "traits": {
+              "mode": "subjonctif",
+              "temps": "present",
+              "personne": "1",
+              "nombre": "singulier"
+            },
+            "components": null
+          },
+          {
+            "nature": "verbe",
+            "lemme": "jouer",
+            "traits": {
+              "mode": "subjonctif",
+              "temps": "present",
+              "personne": "3",
+              "nombre": "singulier"
+            },
+            "components": null
+          },
+          {
+            "nature": "verbe",
+            "lemme": "jouer",
+            "traits": {
+              "mode": "imperatif",
+              "temps": "present",
+              "personne": "2",
+              "nombre": "singulier"
+            },
+            "components": null
+          }
+        ],
+        "segment_id": 2,
+        "token": "joue"
+      }
+    ]
+  },
+  {
+    "id": "F08",
+    "text": "la",
+    "segments": [
+      {
+        "id": 1,
+        "surface": "la",
+        "span_utf16": [
+          0,
+          2
+        ],
+        "span_utf8": [
+          0,
+          2
+        ]
+      }
+    ],
+    "focus": [
+      {
+        "surface": "la",
+        "required_readings": [
+          {
+            "nature": "determinant",
+            "lemme": "le",
+            "traits": {
+              "type": "article_defini",
+              "genre": "feminin",
+              "nombre": "singulier"
+            },
+            "components": null
+          },
+          {
+            "nature": "pronom",
+            "lemme": "le",
+            "traits": {
+              "type": "personnel",
+              "personne": "3",
+              "genre": "feminin",
+              "nombre": "singulier"
+            },
+            "components": null
+          }
+        ],
+        "additional_readings_allowed": true,
+        "segment_id": 1,
+        "token": "la"
+      }
+    ]
+  },
+  {
+    "id": "F09",
+    "text": "du",
+    "segments": [
+      {
+        "id": 1,
+        "surface": "du",
+        "span_utf16": [
+          0,
+          2
+        ],
+        "span_utf8": [
+          0,
+          2
+        ]
+      }
+    ],
+    "focus": [
+      {
+        "surface": "du",
+        "required_readings": [
+          {
+            "nature": "determinant",
+            "lemme": "du",
+            "traits": {
+              "type": "article_partitif",
+              "genre": "masculin",
+              "nombre": "singulier"
+            },
+            "components": null
+          },
+          {
+            "nature": "contraction",
+            "lemme": null,
+            "traits": {},
+            "components": [
+              {
+                "surface_canonique": "de",
+                "nature": "préposition",
+                "lemma": "de",
+                "traits": {}
+              },
+              {
+                "surface_canonique": "le",
+                "nature": "déterminant",
+                "lemma": "le",
+                "traits": {
+                  "subtype": "défini",
+                  "gender": "masculin",
+                  "number": "singulier"
+                }
+              }
+            ]
+          }
+        ],
+        "surface_must_not_be_rewritten_as": "de le",
+        "segment_id": 1,
+        "token": "du"
+      }
+    ]
+  },
+  {
+    "id": "F10",
+    "text": "à",
+    "segments": [
+      {
+        "id": 1,
+        "surface": "à",
+        "span_utf16": [
+          0,
+          1
+        ],
+        "span_utf8": [
+          0,
+          2
+        ]
+      }
+    ],
+    "focus": [
+      {
+        "surface": "à",
+        "required_readings": [
+          {
+            "nature": "preposition",
+            "lemme": "à",
+            "traits": {},
+            "components": null
+          }
+        ],
+        "must_not_invent_traits": [
+          "gender",
+          "number",
+          "person"
+        ],
+        "segment_id": 1,
+        "token": "à"
+      }
+    ]
+  },
+  {
+    "id": "F11",
+    "text": "et",
+    "segments": [
+      {
+        "id": 1,
+        "surface": "et",
+        "span_utf16": [
+          0,
+          2
+        ],
+        "span_utf8": [
+          0,
+          2
+        ]
+      }
+    ],
+    "focus": [
+      {
+        "surface": "et",
+        "required_readings": [
+          {
+            "nature": "conjonction",
+            "lemme": "et",
+            "traits": {
+              "type": "coordination"
+            },
+            "components": null
+          }
+        ],
+        "must_not_invent_traits": [
+          "gender",
+          "number",
+          "person"
+        ],
+        "segment_id": 1,
+        "token": "et"
+      }
+    ]
+  },
+  {
+    "id": "F12",
+    "text": "Oh !",
+    "segments": [
+      {
+        "id": 1,
+        "surface": "Oh",
+        "span_utf16": [
+          0,
+          2
+        ],
+        "span_utf8": [
+          0,
+          2
+        ]
+      },
+      {
+        "id": 2,
+        "surface": "!",
+        "span_utf16": [
+          3,
+          4
+        ],
+        "span_utf8": [
+          3,
+          4
+        ]
+      }
+    ],
+    "focus": [
+      {
+        "surface": "Oh",
+        "required_readings": [
+          {
+            "nature": "interjection",
+            "lemme": "oh",
+            "traits": {},
+            "components": null
+          }
+        ],
+        "segment_id": 1,
+        "token": "Oh"
+      }
+    ]
+  },
+  {
+    "id": "F13",
+    "text": "demain",
+    "segments": [
+      {
+        "id": 1,
+        "surface": "demain",
+        "span_utf16": [
+          0,
+          6
+        ],
+        "span_utf8": [
+          0,
+          6
+        ]
+      }
+    ],
+    "focus": [
+      {
+        "surface": "demain",
+        "required_readings": [
+          {
+            "nature": "adverbe",
+            "lemme": "demain",
+            "traits": {},
+            "components": null
+          }
+        ],
+        "additional_readings_allowed": true,
+        "segment_id": 1,
+        "token": "demain"
+      }
+    ]
+  },
+  {
+    "id": "F14",
+    "text": "Les zorpules.",
+    "segments": [
+      {
+        "id": 1,
+        "surface": "Les",
+        "span_utf16": [
+          0,
+          3
+        ],
+        "span_utf8": [
+          0,
+          3
+        ]
+      },
+      {
+        "id": 2,
+        "surface": "zorpules",
+        "span_utf16": [
+          4,
+          12
+        ],
+        "span_utf8": [
+          4,
+          12
+        ]
+      },
+      {
+        "id": 3,
+        "surface": ".",
+        "span_utf16": [
+          12,
+          13
+        ],
+        "span_utf8": [
+          12,
+          13
+        ]
+      }
+    ],
+    "focus": [
+      {
+        "surface": "Les",
+        "required_readings": [
+          {
+            "nature": "determinant",
+            "lemme": "le",
+            "traits": {
+              "type": "article_defini",
+              "nombre": "pluriel",
+              "genre": null
+            },
+            "components": null
+          },
+          {
+            "nature": "pronom",
+            "lemme": "le",
+            "traits": {
+              "type": "personnel",
+              "personne": "3",
+              "nombre": "pluriel",
+              "genre": null
+            },
+            "components": null
+          }
+        ],
+        "segment_id": 1,
+        "token": "Les"
+      },
+      {
+        "surface": "zorpules",
+        "required_readings": [],
+        "lexical_status": "inconnu_dans_le_lexique_de_reference",
+        "must_not_invent_lemma": "zorpule",
+        "must_not_infer_nature_or_number_from_suffix": true,
+        "segment_id": 2,
+        "token": "zorpules"
+      }
+    ]
+  },
+  {
+    "id": "F15",
+    "text": "école",
+    "segments": [
+      {
+        "id": 1,
+        "surface": "école",
+        "span_utf16": [
+          0,
+          6
+        ],
+        "span_utf8": [
+          0,
+          7
+        ]
+      }
+    ],
+    "focus": [
+      {
+        "surface": "école",
+        "lookup_nfc": "école",
+        "required_readings": [
+          {
+            "nature": "nom",
+            "lemme": "école",
+            "traits": {
+              "genre": "feminin",
+              "nombre": "singulier"
+            },
+            "components": null
+          }
+        ],
+        "original_normalization": "NFD",
+        "must_preserve_original_surface": true,
+        "segment_id": 1,
+        "token": "école"
+      }
+    ]
+  },
+  {
+    "id": "F16",
+    "text": "ÉCOLES 👋",
+    "segments": [
+      {
+        "id": 1,
+        "surface": "ÉCOLES",
+        "span_utf16": [
+          0,
+          6
+        ],
+        "span_utf8": [
+          0,
+          7
+        ]
+      },
+      {
+        "id": 2,
+        "surface": "👋",
+        "span_utf16": [
+          7,
+          9
+        ],
+        "span_utf8": [
+          8,
+          12
+        ]
+      }
+    ],
+    "focus": [
+      {
+        "surface": "ÉCOLES",
+        "lookup_casefold_nfc": "écoles",
+        "required_readings": [
+          {
+            "nature": "nom",
+            "lemme": "école",
+            "traits": {
+              "genre": "feminin",
+              "nombre": "pluriel"
+            },
+            "components": null
+          }
+        ],
+        "must_preserve_original_surface": true,
+        "segment_id": 1,
+        "token": "ÉCOLES"
+      }
+    ]
+  }
+]

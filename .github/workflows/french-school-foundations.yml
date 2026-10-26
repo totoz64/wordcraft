@@ -1,0 +1,90 @@
+{
+  "name": "French school foundations",
+  "on": {
+    "push": {
+      "branches": [
+        "study/french-school-foundations"
+      ],
+      "paths": [
+        "tools/french-school-foundations/**",
+        ".github/workflows/french-school-foundations.yml"
+      ]
+    },
+    "workflow_dispatch": {}
+  },
+  "permissions": {
+    "contents": "read"
+  },
+  "concurrency": {
+    "group": "school-foundations-${{ github.ref }}",
+    "cancel-in-progress": false
+  },
+  "jobs": {
+    "lexical": {
+      "name": "Lexical (${{ matrix.os }})",
+      "runs-on": "${{ matrix.os }}",
+      "timeout-minutes": 20,
+      "strategy": {
+        "fail-fast": false,
+        "matrix": {
+          "os": [
+            "ubuntu-24.04",
+            "windows-latest"
+          ]
+        }
+      },
+      "defaults": {
+        "run": {
+          "working-directory": "tools/french-school-foundations"
+        }
+      },
+      "env": {
+        "CARGO_TERM_COLOR": "always",
+        "FORMAT_MODE": "prepare"
+      },
+      "steps": [
+        {
+          "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+        },
+        {
+          "uses": "dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8",
+          "with": {
+            "toolchain": "1.98.1",
+            "components": "rustfmt, clippy"
+          }
+        },
+        {
+          "name": "Compiler and formatting",
+          "run": "rustc --version --verbose\ncargo --version\nif [ \"$FORMAT_MODE\" = \"prepare\" ]; then cargo fmt; fi\ncargo fmt -- --check",
+          "shell": "bash"
+        },
+        {
+          "name": "Execute lexical and independent cases",
+          "run": "cargo test --all-targets"
+        },
+        {
+          "name": "Strict Clippy",
+          "run": "cargo clippy --all-targets -- -D warnings"
+        },
+        {
+          "name": "Build and exercise actual CLI",
+          "run": "cargo build --release\ncargo run --release -- --text \"Les petits chiens jouent.\" > example-school.json\ncargo run --release -- --text \"porte suis les chevaux\" > example-ambiguities.json\ncargo run --release -- --text \"Les zorpules.\" > example-unknown.json"
+        },
+        {
+          "name": "Record exact executed source and limits",
+          "shell": "python",
+          "run": "import hashlib, json, os, pathlib, subprocess\np=pathlib.Path(\".\")\nfiles=[\"Cargo.toml\",\"Cargo.lock\",\"src/lib.rs\",\"src/main.rs\",\"tests/acceptance.rs\",\"data/independent-cases.json\",\"README.md\"]\nmetadata={\"head_sha\":os.environ[\"GITHUB_SHA\"],\"runner_os\":os.environ[\"RUNNER_OS\"],\"format_mode\":os.environ[\"FORMAT_MODE\"],\"files\":{f:hashlib.sha256((p/f).read_bytes()).hexdigest() for f in files},\"grammar_diagnostics\":False,\"corrections_enabled\":False}\nfor name in [\"example-school.json\",\"example-ambiguities.json\",\"example-unknown.json\"]:\n r=json.loads((p/name).read_text(encoding=\"utf-8-sig\"))\n assert r[\"corrections\"]==[]\n assert \"fonctions\" not in r and \"groupes\" not in r\n metadata[name]={\"tokens\":len(r[\"tokens\"]),\"known_forms\":r[\"formes_indexees\"]}\n(p/\"validation-provenance.json\").write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding=\"utf-8\")"
+        },
+        {
+          "name": "Source, real CLI output and executable",
+          "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "with": {
+            "name": "french-school-foundations-${{ runner.os }}",
+            "if-no-files-found": "error",
+            "path": "tools/french-school-foundations/Cargo.toml\ntools/french-school-foundations/Cargo.lock\ntools/french-school-foundations/README.md\ntools/french-school-foundations/src/\ntools/french-school-foundations/tests/\ntools/french-school-foundations/data/\ntools/french-school-foundations/example-*.json\ntools/french-school-foundations/validation-provenance.json\ntools/french-school-foundations/target/release/french-school-foundations*"
+          }
+        }
+      ]
+    }
+  }
+}
