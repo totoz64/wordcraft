@@ -1,0 +1,28 @@
+name: Prefix index differential audit
+on:
+  push:
+    branches: [bench/french-prefix-index-audit]
+permissions:
+  contents: read
+jobs:
+  historical-differential:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Pin Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal
+      - name: Fetch immutable historical and proposed modules
+        run: python3 tools/affix-index-audit/prepare.py
+      - name: Generate standalone lockfile
+        run: cargo +1.98.1 generate-lockfile --manifest-path tools/affix-index-audit/Cargo.toml
+      - name: Compare actual old and current implementations
+        env:
+          CARGO_TARGET_DIR: target/affix-index-audit
+        run: cargo +1.98.1 test --locked --manifest-path tools/affix-index-audit/Cargo.toml -- --nocapture
+      - name: Upload source provenance
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: prefix-index-provenance
+          path: tools/affix-index-audit/source-provenance.json
