@@ -22,6 +22,23 @@ length bounds. The frozen historical affix_compatibility expectations are not
 regenerated. A separate ignored regression requires the checksum-pinned French
 runtime dictionary and checks metric-unit plurals and nearby invalid spellings.
 
+## Indexed lookup follow-up
+
+Controlled same-VM measurements on 192 fixed development cases showed about 37%
+additional CPU and wall time for the unindexed prefix-grant path (run 40374259717,
+four balanced pairs). Operation counts on eight original probes showed
+26,998,277 prefix-rule visits; 78,196 of 137,049 nonempty grant masks were disjoint.
+
+The experimental index stores the union of grantable suffix classes and groups
+cross prefixes by their granted suffix mask and NEEDAFFIX requirement. Each
+relevant prefix index is stored once, including multi-class prefixes, so index
+storage grows linearly rather than once per possible flag. Impossible suffix
+classes are filtered before the new walk; lookups allocate no candidate lists.
+The compact format is unchanged and its reader rebuilds this derived index.
+
+Full proofing, frozen compatibility, real dictionaries, independent differential
+observations and a controlled repeat must validate this source before integration.
+
 ## Reference observations
 
 The [public Hunspell dictionary format manual](https://github.com/hunspell/hunspell/blob/master/man/hunspell.5)

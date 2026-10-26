@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
   operation-profile:
     runs-on: ubuntu-24.04
@@ -18,7 +19,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
         with:
           toolchain: '1.98.1'
-          components: rustfmt
+          components: rustfmt, clippy
       - name: Verify external runtime dictionary
         run: python3 tools/affix-performance/prepare_inputs.py
       - name: Record operation counts for original fixed probes
@@ -31,3 +32,54 @@ jobs:
           name: prefix-operation-profile
           path: prefix-operation-profile.log
           if-no-files-found: error
+
+  gates-and-measure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      WORDCRAFT_DICTIONARIES: ${{ github.workspace }}/benchmark-data/dictionary
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: '1.98.1'
+          components: rustfmt, clippy
+      - name: Check source formatting
+        id: formatting
+        continue-on-error: true
+        run: cargo fmt --all -- --check
+      - name: Verify pinned dictionary and controlled inputs
+        run: python3 tools/affix-performance/prepare_inputs.py
+      - name: Full proofing and frozen compatibility gates
+        run: |
+          cargo test --locked -p wordcraft-proof
+          cargo test --locked -p wordcraft-proof --test french_dictionary -- --ignored
+          cargo test --locked -p wordcraft-proof --test prefix_continuations -- --ignored
+          cargo clippy --locked -p wordcraft-proof --all-targets -- -D warnings
+      - name: Build release runner for this source SHA
+        run: |
+          cargo clippy --locked --manifest-path tools/proofing-benchmark/Cargo.toml --all-targets -- -D warnings
+          cargo build --locked --release --manifest-path tools/proofing-benchmark/Cargo.toml
+      - name: Measure old and indexed runners sequentially on this VM
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/affix-performance/compare-index.py
+      - name: Save measurements and built runner
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: prefix-index-measurements
+          path: |
+            performance-results/performance-report.json
+            performance-results/measured-*.jsonl
+            performance-results/measured-*.jsonl.metadata.json
+            benchmark-data/input-provenance.json
+            tools/proofing-benchmark/target/release/wordcraft-proofing-benchmark
+          if-no-files-found: error
+      - name: Save proposed formatting for correction
+        if: steps.formatting.outcome != 'success'
+        run: |
+          cargo fmt --all
+          git diff -- crates/proof/src/affix.rs
+          exit 1
