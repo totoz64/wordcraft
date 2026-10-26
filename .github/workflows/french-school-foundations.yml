@@ -40,7 +40,7 @@
       },
       "env": {
         "CARGO_TERM_COLOR": "always",
-        "FORMAT_MODE": "prepare"
+        "FORMAT_MODE": "strict"
       },
       "steps": [
         {
@@ -60,15 +60,15 @@
         },
         {
           "name": "Execute lexical and independent cases",
-          "run": "cargo test --all-targets"
+          "run": "cargo test --locked --all-targets"
         },
         {
           "name": "Strict Clippy",
-          "run": "cargo clippy --all-targets -- -D warnings"
+          "run": "cargo clippy --locked --all-targets -- -D warnings"
         },
         {
           "name": "Build and exercise actual CLI",
-          "run": "cargo build --release\ncargo run --release -- --text \"Les petits chiens jouent.\" > example-school.json\ncargo run --release -- --text \"porte suis les chevaux\" > example-ambiguities.json\ncargo run --release -- --text \"Les zorpules.\" > example-unknown.json"
+          "run": "cargo build --locked --release\ncargo run --locked --release -- --text \"Les petits chiens jouent.\" > example-school.json\ncargo run --locked --release -- --text \"porte suis les chevaux\" > example-ambiguities.json\ncargo run --locked --release -- --text \"Les zorpules.\" > example-unknown.json"
         },
         {
           "name": "Record exact executed source and limits",

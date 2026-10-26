@@ -2,8 +2,11 @@
 use french_school_foundations::{AnalysisError, MAX_BYTES, analyze};
 
 fn reading(text: &str, form: &str, lemma: &str, nature: &str, traits: &[(&str, &str)]) -> bool {
-    analyze(text).unwrap().tokens.iter().filter(|t| t.texte == form).any(|t|
-        t.lectures.iter().any(|r| r.lemme == lemma && r.nature == nature && traits.iter().all(|(k,v)| r.traits.get(k).is_some_and(|actual| actual == v))))
+    analyze(text).unwrap().tokens.iter().filter(|t| t.texte == form).any(|t| {
+        t.lectures
+            .iter()
+            .any(|r| r.lemme == lemma && r.nature == nature && traits.iter().all(|(k, v)| r.traits.get(k).is_some_and(|actual| actual == v)))
+    })
 }
 
 #[test]
@@ -37,8 +40,12 @@ fn gender_and_number_are_not_guessed_from_endings() {
     assert!(reading("chevaux", "chevaux", "cheval", "nom", &[("nombre", "pluriel")]));
     assert!(reading("heureux", "heureux", "heureux", "adjectif", &[("nombre", "singulier")]));
     assert!(reading("heureux", "heureux", "heureux", "adjectif", &[("nombre", "pluriel")]));
-    for nature in ["determinant", "pronom"] { assert!(reading("les", "les", "le", nature, &[("nombre", "pluriel")])); }
-    for item in analyze("les").unwrap().tokens.iter().flat_map(|t| &t.lectures) { assert!(!item.traits.contains_key("genre")); }
+    for nature in ["determinant", "pronom"] {
+        assert!(reading("les", "les", "le", nature, &[("nombre", "pluriel")]));
+    }
+    for item in analyze("les").unwrap().tokens.iter().flat_map(|t| &t.lectures) {
+        assert!(!item.traits.contains_key("genre"));
+    }
     assert!(reading("enfants", "enfants", "enfant", "nom", &[("genre", "masculin")]));
     assert!(reading("enfants", "enfants", "enfant", "nom", &[("genre", "feminin")]));
 }
@@ -70,7 +77,8 @@ fn normalized_lookup_never_rewrites_original_offsets() {
             assert!(t.plage_utf8[0] >= end8 && t.plage_utf16[0] >= end16);
             assert_eq!(sentence.get(t.plage_utf8[0]..t.plage_utf8[1]), Some(t.texte.as_str()));
             assert_eq!(String::from_utf16(&utf16[t.plage_utf16[0]..t.plage_utf16[1]]).unwrap(), t.texte);
-            end8 = t.plage_utf8[1]; end16 = t.plage_utf16[1];
+            end8 = t.plage_utf8[1];
+            end16 = t.plage_utf16[1];
         }
     }
     assert!(reading("e\u{301}cole", "e\u{301}cole", "école", "nom", &[]));
@@ -91,7 +99,17 @@ fn unknown_is_not_a_spelling_judgment_and_bad_agreement_is_not_repaired() {
 
 #[test]
 fn all_nine_school_classes_have_known_examples() {
-    for (text, nature) in [("chien", "nom"), ("le", "determinant"), ("petit", "adjectif"), ("je", "pronom"), ("joue", "verbe"), ("vite", "adverbe"), ("avec", "preposition"), ("et", "conjonction"), ("hélas", "interjection")] {
+    for (text, nature) in [
+        ("chien", "nom"),
+        ("le", "determinant"),
+        ("petit", "adjectif"),
+        ("je", "pronom"),
+        ("joue", "verbe"),
+        ("vite", "adverbe"),
+        ("avec", "preposition"),
+        ("et", "conjonction"),
+        ("hélas", "interjection"),
+    ] {
         assert!(analyze(text).unwrap().tokens.iter().flat_map(|t| &t.lectures).any(|r| r.nature == nature));
     }
 }
@@ -148,22 +166,31 @@ fn independent_school_reference_cases() {
                     let components = expected["components"].as_array().unwrap();
                     let prep = components[0]["lemma"].as_str().unwrap();
                     let article = components[1]["lemma"].as_str().unwrap();
-                    assert!(token.lectures.iter().any(|r|
-                        r.nature == "determinant" && r.lemme == article &&
-                        r.traits.get("type").is_some_and(|s| s == "article_contracte") &&
-                        r.traits.get("preposition").is_some_and(|s| s == prep) &&
-                        r.traits.get("genre").is_some_and(|s| s == "masculin") &&
-                        r.traits.get("nombre").is_some_and(|s| s == "singulier")));
+                    assert!(token.lectures.iter().any(|r| r.nature == "determinant"
+                        && r.lemme == article
+                        && r.traits.get("type").is_some_and(|s| s == "article_contracte")
+                        && r.traits.get("preposition").is_some_and(|s| s == prep)
+                        && r.traits.get("genre").is_some_and(|s| s == "masculin")
+                        && r.traits.get("nombre").is_some_and(|s| s == "singulier")));
                     continue;
                 }
-                assert!(token.lectures.iter().any(|r| {
-                    r.lemme == expected["lemme"].as_str().unwrap() &&
-                    r.nature == expected["nature"].as_str().unwrap() &&
-                    expected["traits"].as_object().unwrap().iter().all(|(key, value)| {
-                        if value.is_null() { !r.traits.contains_key(key.as_str()) }
-                        else { r.traits.get(key.as_str()).is_some_and(|s| s == value.as_str().unwrap()) }
-                    })
-                }), "missing reading in {} for {}: {}", case["id"], token.texte, expected);
+                assert!(
+                    token.lectures.iter().any(|r| {
+                        r.lemme == expected["lemme"].as_str().unwrap()
+                            && r.nature == expected["nature"].as_str().unwrap()
+                            && expected["traits"].as_object().unwrap().iter().all(|(key, value)| {
+                                if value.is_null() {
+                                    !r.traits.contains_key(key.as_str())
+                                } else {
+                                    r.traits.get(key.as_str()).is_some_and(|s| s == value.as_str().unwrap())
+                                }
+                            })
+                    }),
+                    "missing reading in {} for {}: {}",
+                    case["id"],
+                    token.texte,
+                    expected
+                );
             }
         }
     }

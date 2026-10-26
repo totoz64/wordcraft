@@ -10,11 +10,15 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some("--text") => {
             let value = args.next().ok_or("phrase manquante après --text")?;
-            if args.next().is_some() { return Err("argument supplémentaire".into()); }
+            if args.next().is_some() {
+                return Err("argument supplémentaire".into());
+            }
             value
         }
         Some("--stdin") => {
-            if args.next().is_some() { return Err("argument supplémentaire".into()); }
+            if args.next().is_some() {
+                return Err("argument supplémentaire".into());
+            }
             let mut value = String::new();
             std::io::stdin().take((MAX_BYTES + 1) as u64).read_to_string(&mut value)?;
             value
@@ -32,6 +36,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 fn main() -> std::process::ExitCode {
     match run() {
         Ok(()) => std::process::ExitCode::SUCCESS,
-        Err(error) => { eprintln!("{error}"); std::process::ExitCode::FAILURE }
+        Err(error) => {
+            eprintln!("{error}");
+            std::process::ExitCode::FAILURE
+        }
     }
 }
