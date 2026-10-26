@@ -8618,7 +8618,7 @@ fn french_proofing_through_the_review_commands_locution_language_context() {
                     run(&mut session, "document.setText", json!({"text": source}));
                     run(&mut session, "select.all", json!({}));
                     run(&mut session, "review.language", json!({"lang": left}));
-                    run(&mut session, "select.range", json!({"anchor": {"path": [0], "off": cut}, "focus": {"path": [0], "off": source.len()}}));
+                    run(&mut session, "select.range", json!({"anchor": {"block": 0, "off": cut}, "focus": {"block": 0, "off": source.len()}}));
                     run(&mut session, "review.language", json!({"lang": right}));
                     let issues = run(&mut session, "review.issues", json!({}));
                     assert!(
@@ -8632,7 +8632,7 @@ fn french_proofing_through_the_review_commands_locution_language_context() {
         // A language change before pas is outside the context consulted by this rule.
         let mut session = s();
         run(&mut session, "document.setText", json!({"text": source}));
-        run(&mut session, "select.range", json!({"anchor": {"path": [0], "off": marker}, "focus": {"path": [0], "off": source.len()}}));
+        run(&mut session, "select.range", json!({"anchor": {"block": 0, "off": marker}, "focus": {"block": 0, "off": source.len()}}));
         run(&mut session, "review.language", json!({"lang": lang}));
         let issues = run(&mut session, "review.issues", json!({}));
         assert!(issues.as_array().unwrap().iter().any(|i| i["kind"] == "grammar" && i["suggestions"][0] == "grand-chose"), "{issues}");
